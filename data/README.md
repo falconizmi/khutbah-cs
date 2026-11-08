@@ -21,6 +21,12 @@ This folder separates untouched source downloads (`data/raw/`) from the normaliz
 Generated deterministically offline by running `python3 src/build_datasets.py`:
 
 - **`quran_cs.json`** — Merges `quran-simple-clean.txt` and `cs.hrbek.txt` by `sura|aya` (6,236 verses). Strips glued Bismillah from Aya 1 (except Suras 1 and 9) and adds an `ar_clean` field with stripped tashkeel/tatweel, unified alef variants (`أ إ آ ٱ` -> `ا`), and normalized yaa/taa marbuta for `rapidfuzz` matching.
+
 - **`hadith_cs.json`** — Extracted from `HadeethEnc.com_cs-v1.9.0.csv` (478 Hadiths) with both normalized full text (`ar_clean`) and short core Prophetic quote (`title_ar_clean`).
-- **`prague_archive.json`** — 57 verified 1-to-1 parallel Arabic–Czech Friday sermons (2022–2026) paired by Friday date from `prague_khutbahs_ar.json` and `prague_khutbahs_cs.json`.
+
+- **`prague_archive.json`** — 70 verified 1-to-1 parallel Arabic–Czech Friday sermons (`2021`: 15, `2022`: 9, `2023`: 3, `2026`: 43) paired from `prague_khutbahs_ar.json` and `prague_khutbahs_cs.json`:
+  - Enforces full-sermon length (`>= 1,800` chars in both languages) and a `CS/AR` length ratio (`0.65–2.15`) to exclude short Eid prayer-time announcements and mid-week essays.
+  - Prioritizes explicit Friday dates and verifies lagged WordPress uploads (`-1` to `-7` days) via shared body Quran citations (`(Sura:Aya)` in Czech verified against normalized Arabic verse slices in `quran_cs.json`).
+  - Auto-closes a recurring unclosed Czech quotation mark (`„...“`) in the Prague Mosque's *Khutbat al-Hajah* opening template across 50 sermons and runs build-time QA anomaly checks (`run_archive_qa_checks()`).
+
 - **`glossary.json`** — Mosque-specific Czech Islamic terminology, standard opening/closing liturgical formulas, and regex patterns for stripping congregation-baiting greetings.
