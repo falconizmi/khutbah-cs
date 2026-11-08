@@ -4,6 +4,7 @@ import json
 import re
 from collections import Counter
 from datetime import datetime, timedelta
+from difflib import SequenceMatcher
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -58,7 +59,7 @@ def load_tanzil_file(filepath: Path) -> dict[tuple[int, int], str]:
     return verses
 
 
-def build_quran_dataset() -> dict[tuple[int, int], str]:
+def build_quran_dataset() -> tuple[dict[tuple[int, int], str], dict[tuple[int, int], str]]:
     ar_verses = load_tanzil_file(AR_CLEAN_FILE)
     cs_verses = load_tanzil_file(CS_HRBEK_FILE)
 
@@ -87,7 +88,7 @@ def build_quran_dataset() -> dict[tuple[int, int], str]:
     with OUT_QURAN_JSON.open("w", encoding="utf-8") as f:
         json.dump(merged_data, f, ensure_ascii=False, indent=2)
     print(f"✅ Wrote {len(merged_data)} verses to {OUT_QURAN_JSON.name}")
-    return quran_ar_clean_map
+    return quran_ar_clean_map, cs_verses
 
 
 def build_hadith_dataset():
@@ -183,7 +184,10 @@ def count_shared_verses(
     return hits
 
 
-def build_prague_archive(quran_ar_map: dict[tuple[int, int], str]):
+def build_prague_archive(
+    quran_ar_map: dict[tuple[int, int], str],
+    quran_cs_map: dict[tuple[int, int], str],
+):
     with RAW_PRAGUE_AR.open("r", encoding="utf-8") as f:
         ar_posts = json.load(f)
     with RAW_PRAGUE_CS.open("r", encoding="utf-8") as f:
@@ -294,10 +298,71 @@ def build_prague_archive(quran_ar_map: dict[tuple[int, int], str]):
         json.dump(paired, f, ensure_ascii=False, indent=2)
 
     print(f"\n✅ Wrote {len(paired)} verified 1-to-1 AR-CS Prague Khutbahs to {OUT_PRAGUE_JSON.name}")
-    run_archive_qa_checks(paired)
+    run_archive_qa_checks(paired, quran_cs_map)
 
 
-def run_archive_qa_checks(paired: list[dict]):
+def _norm_cs_raw(text: str) -> str:
+    """Normalize punctuation and case WITHOUT touching Bůh/Alláh."""
+    return re.sub(r"\W+", " ", text.lower()).strip()
+
+
+def _norm_cs_for_hrbek_cmp(text: str) -> str:
+    """
+    Normalize both Hrbek's 'Bůh/Boží*' and the Prague Mosque's 'Alláh/Alláhův*'
+    to a single canonical token so grammatical case adaptations match cleanly.
+    """
+    text = re.sub(r"\b(bůh|boha|bohu|bohem|boží\w*|alláh\w*)\b", "alláh", text.lower())
+    return re.sub(r"\W+", " ", text).strip()
+
+
+def _segment_sim(seg: str, hrbek_norm: str) -> float:
+    s1 = _norm_cs_for_hrbek_cmp(seg)
+    if not s1 or not hrbek_norm:
+        return 0.0
+    if s1 in hrbek_norm:
+        return 1.0
+    if len(s1) < len(hrbek_norm):
+        w = len(s1)
+        best = 0.0
+        for i in range(0, len(hrbek_norm) - w + 1):
+            r = SequenceMatcher(None, s1, hrbek_norm[i : i + w], autojunk=False).ratio()
+            if r > best:
+                best = r
+        return best
+    return SequenceMatcher(None, s1, hrbek_norm, autojunk=False).ratio()
+
+
+def _hrbek_similarity(quote_cs: str, hrbek_cs: str) -> float:
+    hrbek_norm = _norm_cs_for_hrbek_cmp(hrbek_cs)
+    parts = [p.strip() for p in re.split(r"…|\.{3,}", quote_cs) if len(p.strip()) >= 10]
+    if not parts:
+        return _segment_sim(quote_cs, hrbek_norm)
+    return min(_segment_sim(p, hrbek_norm) for p in parts)
+
+
+def _word_diff_summary(quote_cs: str, hrbek_cs: str) -> str:
+    """Return a compact string showing exact words that differ between the sermon quote and Hrbek."""
+    q_words = _norm_cs_for_hrbek_cmp(quote_cs).split()
+    h_words = _norm_cs_for_hrbek_cmp(hrbek_cs).split()
+    if len(q_words) < len(h_words):
+        best_i, best_r = 0, 0.0
+        for i in range(len(h_words) - len(q_words) + 1):
+            r = SequenceMatcher(None, q_words, h_words[i : i + len(q_words)], autojunk=False).ratio()
+            if r > best_r:
+                best_r, best_i = r, i
+        h_words = h_words[best_i : best_i + len(q_words)]
+
+    sm = SequenceMatcher(None, h_words, q_words, autojunk=False)
+    changes = []
+    for tag, i1, i2, j1, j2 in sm.get_opcodes():
+        if tag != "equal":
+            h_part = " ".join(h_words[i1:i2])
+            q_part = " ".join(q_words[j1:j2])
+            changes.append(f"'{h_part}' -> '{q_part}'")
+    return "; ".join(changes[:4])
+
+
+def run_archive_qa_checks(paired: list[dict], quran_cs_map: dict[tuple[int, int], str]):
     print("\n--- QA & ANOMALY CONTROL REPORT ---")
     by_year = Counter(p["date"][:4] for p in paired)
     print("  1. Paired sermons by year:", dict(sorted(by_year.items())))
@@ -321,8 +386,87 @@ def run_archive_qa_checks(paired: list[dict]):
     for d, o, c, t in unbalanced_q:
         print(f"     ⚠️ [{d}] „={o}, “={c} | {t}")
 
+    # 5. Empirical verification that cited Quran quotes use Ivan Hrbek (with Bůh -> Alláh)
+    quote_re = re.compile(r"„([^“]{10,600})“\s*\((\d{1,3})\s*:\s*(\d{1,3})(?:\s*[-–]\s*(\d{1,3}))?\)")
+    tier_100_raw = 0      # 100% verbatim Hrbek (verse did not even need Bůh -> Alláh change)
+    tier_100_allah = 0    # 100% verbatim Hrbek AFTER accounting for Bůh/Boží -> Alláh/Alláhův
+    tier_90_99 = []       # 90-99% (1-2 words tweaked)
+    tier_80_89 = []       # 80-89% (minor phrase tweaked)
+    tier_typo_ref = []    # Verbatim/near-verbatim Hrbek, but human typo in Aya number
+    tier_below_80 = []    # <80% similarity
+
+    for p in paired:
+        for m in quote_re.finditer(p["cs"]):
+            quote_cs = m.group(1).strip()
+            s, a1 = int(m.group(2)), int(m.group(3))
+            a2 = int(m.group(4)) if m.group(4) else a1
+            if (s, a1) in KHUTBAT_HAJAH_VERSES or (s, a1) not in quran_cs_map:
+                continue
+
+            hrbek_text = " ".join(quran_cs_map.get((s, a), "") for a in range(a1, a2 + 1)).strip()
+            sim = _hrbek_similarity(quote_cs, hrbek_text)
+            ref_str = f"{s}:{a1}" + (f"-{a2}" if a2 != a1 else "")
+
+            # Check if translator quoted 2-3 consecutive verses but only wrote starting verse (s:a1)
+            if sim < 1.0 and a1 == a2:
+                hrbek_multi = " ".join(quran_cs_map.get((s, a), "") for a in range(a1, a1 + 3)).strip()
+                sim_multi = _hrbek_similarity(quote_cs, hrbek_multi)
+                if sim_multi > sim:
+                    sim = sim_multi
+                    hrbek_text = hrbek_multi
+                    ref_str = f"{s}:{a1}+"
+
+            if sim == 1.0:
+                # Check if it matched 100% raw, or 100% specifically via Bůh/Boží -> Alláh/Alláhův
+                parts = [seg.strip() for seg in re.split(r"…|\.{3,}", quote_cs) if len(seg.strip()) >= 10] or [quote_cs]
+                raw_h = _norm_cs_raw(hrbek_text)
+                if all(_norm_cs_raw(seg) in raw_h for seg in parts):
+                    tier_100_raw += 1
+                else:
+                    tier_100_allah += 1
+            elif sim >= 0.90:
+                diff_str = _word_diff_summary(quote_cs, hrbek_text)
+                tier_90_99.append((p["date"], ref_str, round(sim, 3), diff_str))
+            elif sim >= 0.80:
+                diff_str = _word_diff_summary(quote_cs, hrbek_text)
+                tier_80_89.append((p["date"], ref_str, round(sim, 3), diff_str))
+            else:
+                best_aya, best_sim = None, 0.0
+                for (cand_s, cand_a), cand_cs in quran_cs_map.items():
+                    if cand_s == s:
+                        csim = _hrbek_similarity(quote_cs, cand_cs)
+                        if csim > best_sim:
+                            best_sim, best_aya = csim, cand_a
+                if best_sim >= 0.90:
+                    tier_typo_ref.append((p["date"], ref_str, f"{s}:{best_aya}", round(best_sim, 3)))
+                else:
+                    diff_str = _word_diff_summary(quote_cs, hrbek_text)
+                    tier_below_80.append((p["date"], ref_str, round(sim, 3), diff_str))
+
+    tier_100_total = tier_100_raw + tier_100_allah
+    total_v = tier_100_total + len(tier_90_99) + len(tier_80_89) + len(tier_typo_ref) + len(tier_below_80)
+    print(
+        f"  5. Canonical Hrbek Quran verification ({total_v} cited body verses across {len(paired)} sermons):\n"
+        f"     📌 NOTE ON DIVINE NAME ADAPTATION: Ivan Hrbek's translation (cs.hrbek.txt) uses 'Bůh / Boží',\n"
+        f"        whereas the Prague Mosque systematically substitutes 'Alláh / Alláhův' across all Czech\n"
+        f"        grammatical cases (Bůh->Alláh, Boha->Alláha, Bohu->Alláhovi/Alláhu, Boží->Alláhův/ova/ovo).\n"
+        f"        The comparison below explicitly accounts for this rule and splits out the exact counts:\n"
+        f"     - 100% Verbatim Hrbek Total             : {tier_100_total}/{total_v} ({round(100*tier_100_total/max(total_v,1), 1)}%)\n"
+        f"         ├─ Identical without any change     : {tier_100_raw} verses (no 'Bůh' present in quote)\n"
+        f"         └─ Identical with Bůh/Boží -> Alláh : {tier_100_allah} verses (only Divine Name adapted)\n"
+        f"     - 90–99% Match (1–2 words tweaked)      : {len(tier_90_99)}/{total_v} ({round(100*len(tier_90_99)/max(total_v,1), 1)}%)\n"
+        f"     - 80–89% Match (minor phrase tweaked)   : {len(tier_80_89)}/{total_v} ({round(100*len(tier_80_89)/max(total_v,1), 1)}%)\n"
+        f"     - Human Aya-number typo (>=90% in sura) : {len(tier_typo_ref)}/{total_v}\n"
+        f"     - Below 80% similarity                  : {len(tier_below_80)}/{total_v}"
+    )
+    for d, w_ref, t_ref, b_sim in tier_typo_ref:
+        print(f"     ℹ️ [{d}] Cited ({w_ref}) is Hrbek ({t_ref}) [sim={b_sim}]")
+    for d, ref, sim, diff_str in tier_90_99:
+        print(f"     🔹 [{d}] ({ref}) sim={sim} | {diff_str}")
+    for d, ref, sim, diff_str in tier_80_89 + tier_below_80:
+        print(f"     ⚠️ [{d}] ({ref}) sim={sim} | {diff_str}")
 
 if __name__ == "__main__":
-    quran_ar_map = build_quran_dataset()
+    quran_ar_map, quran_cs_map = build_quran_dataset()
     build_hadith_dataset()
-    build_prague_archive(quran_ar_map)
+    build_prague_archive(quran_ar_map, quran_cs_map)

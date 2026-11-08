@@ -27,6 +27,7 @@ Generated deterministically offline by running `python3 src/build_datasets.py`:
 - **`prague_archive.json`** — 70 verified 1-to-1 parallel Arabic–Czech Friday sermons (`2021`: 15, `2022`: 9, `2023`: 3, `2026`: 43) paired from `prague_khutbahs_ar.json` and `prague_khutbahs_cs.json`:
   - Enforces full-sermon length (`>= 1,800` chars in both languages) and a `CS/AR` length ratio (`0.65–2.15`) to exclude short Eid prayer-time announcements and mid-week essays.
   - Prioritizes explicit Friday dates and verifies lagged WordPress uploads (`-1` to `-7` days) via shared body Quran citations (`(Sura:Aya)` in Czech verified against normalized Arabic verse slices in `quran_cs.json`).
-  - Auto-closes a recurring unclosed Czech quotation mark (`„...“`) in the Prague Mosque's *Khutbat al-Hajah* opening template across 50 sermons and runs build-time QA anomaly checks (`run_archive_qa_checks()`).
+  - Auto-closes a recurring unclosed Czech quotation mark (`„...“`) in the Prague Mosque's *Khutbat al-Hajah* opening template across 50 sermons.
+  - **Built-in QA & Canonical Hrbek Verification (`run_archive_qa_checks()`):** Audits all 275 cited body Quran verses across the 70 sermons against `cs.hrbek.txt` (100% derived from Hrbek: 82.9% character-for-character verbatim after accounting for the mosque's systematic `Bůh/Boží -> Alláh/Alláhův` grammatical case substitution, 16.0% with 1–2 word adjustments such as OCR typo fixes or `Abraham -> Ibráhím`, and 0% below 80% similarity).
 
 - **`glossary.json`** — Mosque-specific Czech Islamic terminology, standard opening/closing liturgical formulas, and regex patterns for stripping congregation-baiting greetings.
