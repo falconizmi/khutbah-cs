@@ -34,7 +34,8 @@ Review the Czech draft against the original Arabic sermon and fix ONLY:
 STRICT LOCKS — DO NOT VIOLATE:
 - NEVER alter a single word inside Qur'anic quotes `„...“ (Surah:Verse)` or the opening `Khutbat al-Hājah` paragraph.
 - Keep `Alláh` / `Alláhův` (never `Bůh` / `Boží`), keep transliterated honorifics (`salla lláhu ʻalajhi wa sallam`, `radija lláhu anhu`), and NEVER add audience greetings (`As-salámu alajkum` / `Mír s vámi`).
-- Output ONLY the final corrected Czech sermon text, with zero commentary."""
+- Output ONLY the final corrected Czech sermon text, with zero commentary.
+- Keep gender-inclusive Czech vocatives ('bratři a sestry', 'muslimové a muslimky') even when the Arabic uses masculine plural ('إخوة الإيمان' / 'أيها الكرام') — NEVER revert them to masculine-only 'bratři' or 'věřící'!"""
 
 # MinbarAI-inspired script leak guard: Arabic, Cyrillic, CJK, Hebrew, Persian/Urdu blocks
 _SCRIPT_LEAK_RE = re.compile(r"[\u0400-\u04FF\u0590-\u05FF\u0600-\u06FF\u0750-\u077F\u4E00-\u9FFF\u3040-\u30FF]")
@@ -141,7 +142,7 @@ def main() -> None:
     parser.add_argument("-o", "--output", help="Path to save translated Czech .md/.txt file")
     parser.add_argument("--date", help="Optional YYYY-MM-DD override for the sermon Friday date")
     parser.add_argument("--few-shot", type=int, default=2, help="Number of similar Prague sermons to include (default: 2)")
-    parser.add_argument("--model", default="gemini-3.6-flash", help="Preferred Free-Tier Gemini model (pass --model gemini-4-hydrogen for official Friday run)")
+    parser.add_argument("--model", default="gemini-4-hydrogen", help="Preferred Free-Tier Gemini model (default: gemini-4-hydrogen)")
     parser.add_argument("--no-polish", action="store_true", help="Skip Pass 2 Czech proofreading (saves 1 API call during quick tests)")
     parser.add_argument(
         "--test-archive",

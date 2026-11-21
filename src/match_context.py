@@ -7,10 +7,11 @@
 
 Given a raw Arabic Friday sermon (khutbah):
 1. Computes the Czech Gregorian + Islamic Hijri header date string (`[HEADER_DATE]`).
-2. Scans explicit Quran brackets (`﴿...﴾`, `{...}`) and unbracketed quotes using a
-   diacritic-stripped word-bigram + rapidfuzz index over `quran_cs.json` (6,236 verses),
-   adapting Ivan Hrbek's Czech text (`Bůh/Boží` -> `Alláh/Alláhův` across all cases).
-3. Scans Prophetic quotes (`«...»`, `"..."`) against `hadith_cs.json` (478 Hadiths).
+2. Scans explicit Quran brackets (`﴿...﴾`, `{...}`), plain quotes/parentheses, and
+   unbracketed prose using a diacritic-stripped word-bigram + prefix-aware trigram index
+   over `quran_cs.json` (6,236 verses), adapting Ivan Hrbek's Czech text (`Bůh/Boží` -> `Alláh/Alláhův`).
+3. Scans Prophetic quotes (`«...»`, `"..."`, or unquoted speech) against `hadith_cs.json` (478 Hadiths)
+   after stripping isnad/honorific boilerplate so matching scores pure Prophetic text.
 4. Retrieves the top-K most relevant parallel sermons from `prague_archive.json`
    by shared Quran references and Arabic bigram overlap for few-shot style alignment.
 """
@@ -65,7 +66,7 @@ _CS_DEITY_CASES = [
     (re.compile(r"\bBožími\b"), "Alláhovými"),
     (re.compile(r"\bBožího\b"), "Alláhova"),
     (re.compile(r"\bBožímu\b"), "Alláhovu"),
-    (re.compile(r"\bBoží\b"), "Alláhova"),  # safe default; note: Hrbek uses 'vůle Boží', 'posel Boží' -> see phrase rules first!
+    (re.compile(r"\bBoží\b"), "Alláhova"),  # safe default; phrase collocations run first
     (re.compile(r"\bBohem\b"), "Alláhem"),
     (re.compile(r"\bBohu\b"), "Alláhovi"),
     (re.compile(r"\bBoha\b"), "Alláha"),
@@ -79,9 +80,9 @@ _CS_BOZI_COLLOCATIONS = [
     (re.compile(r"\b([Pp]osel|[Ss]lužebník|[Pp]rorok|[Dd]uch|[Ss]lib|[Zz]ákon|[Tt]rest|[Hh]něv|[Dd]ar|[Dd]ům|[Mm]ěsíc|[Ll]id)\s+Boží\b"), r"\1 Alláhův"),
     (re.compile(r"\bBoží\s+(posel|služebník|prorok|slib|zákon|trest|hněv|dar|dům|měsíc|lid)\b"), r"Alláhův \1"),
     # Neuter singular -> Alláhovo
-    (re.compile(r"\b([Ss]lovo|[Pp]ísmo|[Jj]méno|[Rr]ozhodnutí|[Пp]řikázání|[Kk]rálovství|[Ss]větlo|[Vv]edení|[Mm]ilosrdenství|[Pp]ožehnání|[Vv]ítězství|[Pp]ověření)\s+Boží\b"), r"\1 Alláhovo"),
+    (re.compile(r"\b([Ss]lovo|[Pp]ísmo|[Jj]méno|[Rr]ozhodnutí|[Pp]řikázání|[Kk]rálovství|[Ss]větlo|[Vv]edení|[Mm]ilosrdenství|[Pp]ožehnání|[Vv]ítězství|[Pp]ověření)\s+Boží\b"), r"\1 Alláhovo"),
     (re.compile(r"\bBoží\s+(slovo|písmo|jméno|rozhodnutí|přikázání|království|světlo|vedení|milosrdenství|požehnání|vítězství|pověření)\b"), r"Alláhovo \1"),
-    # Genitive / Locative feminine singular ('na cestě Boží', 'z vůle Boží', 'u tváře Boží') -> Alláhovy / Alláhové
+    # Genitive / Locative feminine singular ('na cestě Boží', 'z vůle Boží', 'u tváře Boží') -> Alláhově / Alláhovy
     (re.compile(r"\b(cestě|vůle|milosti|pomoci|ochraně|knize|přítomnosti|blízkosti|tváři)\s+Boží\b"), r"\1 Alláhově"),
     (re.compile(r"\b(z\s+vůle|bez\s+vůle|z\s+milosti|od\s+tváře|u\s+tváře)\s+Boží\b"), r"\1 Alláhovy"),
     # Accusative feminine singular ('cestu Boží', 'milost Boží', 'tvář Boží') -> Alláhovu
@@ -106,6 +107,24 @@ HIJRI_MONTHS_CS = [
     "dhú al-hidždža",
 ]
 
+# Everyday liturgical formulas & generic 4-word phrases that should NOT trigger standalone verse citations in prose
+_PROSE_FORMULA_STOPLIST = {
+    "بسم الله الرحمن الرحيم",
+    "الحمد لله رب العالمين",
+    "اشهد ان لا اله الا الله",
+    "لا اله الا الله",
+    "ان شاء الله تعالي",
+    "في الدنيا والاخره",
+    "الذين امنوا وعملوا الصالحات",
+    "يا ايها الذين امنوا",
+    "والله علي كل شيء قدير",
+    "ان الله غفور رحيم",
+}
+
+_HADITH_BOILERPLATE_RE = re.compile(
+    r"\b(?:عن|ان|سمعت|قال|يقول|رسول الله|النبي|صلي الله عليه وسلم|رضي الله عنه|رضي الله عنها|رضي الله عنهم|رضي الله عنهما|رواه\s+\S+|متفق عليه|في الصحيحين)\b"
+)
+
 
 def normalize_ar(text: str) -> str:
     """Strip diacritics/tatweel, unify Arabic letter variants, keep Arabic letters only."""
@@ -121,6 +140,19 @@ def normalize_ar(text: str) -> str:
 
 def _bigrams(words: list[str]) -> list[str]:
     return [f"{words[i]} {words[i + 1]}" for i in range(len(words) - 1)]
+
+
+def _strip_ar_conjunction(word: str) -> str:
+    """Strip leading و / ف / ل prefix on words >= 3 chars so 'وما' <-> 'ما' and 'فإن' <-> 'إن' match."""
+    if len(word) >= 3 and word[0] in ("و", "ف", "ل"):
+        return word[1:]
+    return word
+
+
+def _clean_hadith_core(norm_text: str) -> str:
+    """Strip isnad/honorific/attribution boilerplate so fuzzy matching scores only the Prophetic matn."""
+    cleaned = _HADITH_BOILERPLATE_RE.sub(" ", norm_text)
+    return " ".join(cleaned.split())
 
 
 def adapt_hrbek_to_mosque_cs(text: str) -> str:
@@ -231,6 +263,7 @@ class ScriptureAndArchiveMatcher:
         self.verses: list[tuple[str, str, str, str]] = []  # (ref, ar_clean, ar_orig, cs_adapted)
         self.bigram_index: dict[str, set[int]] = {}
         self.exact_index: dict[str, int] = {}
+        self.stem_trigram_index: dict[str, list[tuple[int, int]]] = {}
         self.basmala_norm = normalize_ar("بسم الله الرحمن الرحيم")
         self.taawudh_norm = normalize_ar("أعوذ بالله من الشيطان الرجيم")
 
@@ -241,8 +274,13 @@ class ScriptureAndArchiveMatcher:
             idx = len(self.verses)
             self.verses.append((ref, norm, row["ar"], cs_adapted))
             self.exact_index.setdefault(norm, idx)
-            for bg in _bigrams(norm.split()):
+            v_words = norm.split()
+            for bg in _bigrams(v_words):
                 self.bigram_index.setdefault(bg, set()).add(idx)
+            stems = [_strip_ar_conjunction(w) for w in v_words]
+            for pos in range(len(stems) - 2):
+                tg = f"{stems[pos]} {stems[pos + 1]} {stems[pos + 2]}"
+                self.stem_trigram_index.setdefault(tg, []).append((idx, pos))
 
         raw_hadith = json.loads(HADITH_FILE.read_text(encoding="utf-8"))
         self.hadiths: list[dict] = []
@@ -250,14 +288,16 @@ class ScriptureAndArchiveMatcher:
         for h in raw_hadith:
             idx = len(self.hadiths)
             norm = h.get("ar_clean") or normalize_ar(h.get("ar", ""))
+            core_norm = _clean_hadith_core(norm)
             title_norm = h.get("title_ar_clean") or normalize_ar(h.get("title_ar", ""))
             self.hadiths.append({
                 "id": str(h.get("id", idx)),
                 "norm": norm,
+                "core_norm": core_norm,
                 "title_norm": title_norm,
                 "cs": adapt_hrbek_to_mosque_cs(h.get("cs", "")),
             })
-            for bg in set(_bigrams(norm.split()) + _bigrams(title_norm.split())):
+            for bg in set(_bigrams(core_norm.split()) + _bigrams(title_norm.split())):
                 self.hadith_bigrams.setdefault(bg, set()).add(idx)
 
         self.archive: list[dict] = json.loads(ARCHIVE_FILE.read_text(encoding="utf-8"))
@@ -349,56 +389,164 @@ class ScriptureAndArchiveMatcher:
         )
 
     def extract_quran_matches(self, ar_text: str) -> list[QuranMatch]:
-        """Find all Quran quotes in a written Arabic sermon (bracketed & unbracketed)."""
+        """Find all Quran quotes: (1) explicit ﴿...﴾/{...}, (2) quotes/parens, (3) sliding prefix-aware n-gram scan."""
         matches: list[QuranMatch] = []
-        seen_spans: list[tuple[int, int]] = []
+        seen_char_spans: list[tuple[int, int]] = []
 
-        # 1. Explicit Quranic brackets: ﴿...﴾ or {...}
-        bracket_re = re.compile(r"﴿([^﴾]{8,1500})﴾|\{([^\}]{8,1500})\}")
+        def _overlaps(s: int, e: int) -> bool:
+            return any(not (e <= ps or s >= pe) for ps, pe in seen_char_spans)
+
+        # 1. Explicit Quranic brackets: ﴿...﴾ or {...} (accepts even 3-word short verses)
+        bracket_re = re.compile(r"﴿([^﴾]{6,1500})﴾|\{([^\}]{6,1500})\}")
         for m in bracket_re.finditer(ar_text):
             span_txt = m.group(1) or m.group(2)
             qm = self.match_quran_span(span_txt, explicit_brackets=True)
             if qm:
                 matches.append(qm)
-                seen_spans.append((m.start(), m.end()))
+                seen_char_spans.append((m.start(), m.end()))
 
-        # 2. Quotes introduced by قال تعالى / يقول الله تعالى in standard quotes «...» or "..." or “...”
-        intro_re = re.compile(
-            r"(?:قال|يقول)\s+(?:الله\s+)?(?:تعالى|سبحانه[^\n:«\"“]{0,25})\s*[:：]?\s*[«\"“]([^»\"”]{10,1200})[»\"”]"
+        # 2. Quoted or parenthesized spans: «...», "...", “...”, '...', (...), [...]
+        honorific_re = re.compile(
+            r"^(?:صلي الله عليه وسلم|رضي الله عنه\w*|عليه السلام|سبحانه وتعالي|عز وجل|تبارك وتعالي|رحمه الله|\d+.*)$"
         )
-        for m in intro_re.finditer(ar_text):
-            if any(not (m.end() <= s or m.start() >= e) for s, e in seen_spans):
+        generic_quote_re = re.compile(
+            r"«([^»]{10,1500})»|“([^”]{10,1500})”|\"([^\"]{10,1500})\"|'([^']{10,1500})'|\(([^()]{10,1500})\)|\[([^\[\]]{10,1500})\]"
+        )
+        for m in generic_quote_re.finditer(ar_text):
+            if _overlaps(m.start(), m.end()):
                 continue
-            qm = self.match_quran_span(m.group(1), explicit_brackets=True)
-            if qm:
+            span_txt = next(g for g in m.groups() if g is not None)
+            norm_s = normalize_ar(span_txt)
+            if not norm_s or honorific_re.match(norm_s) or norm_s in _PROSE_FORMULA_STOPLIST:
+                continue
+            qm = self.match_quran_span(span_txt, explicit_brackets=True)
+            if qm and qm.score >= 92.0 and (not qm.is_partial or len(norm_s.split()) >= 4):
                 matches.append(qm)
-                seen_spans.append((m.start(), m.end()))
+                seen_char_spans.append((m.start(), m.end()))
 
-        # Deduplicate while preserving sermon order
+        # 3. Format-agnostic Seed-and-Extend scan over every clause/sentence in the sermon
+        #    Catches unquoted verses after ':', after 'قال الله (عز وجل)', or woven silently into prose
+        #    even when leading و / ف / ل is added or dropped ('أن ما عند الله خير وأبقى' -> 28:60 / 42:36)!
+        segment_re = re.compile(r"[^\n.؛؟!﴿﴾\{\}]{12,800}")
+        cue_words = {"قال", "يقول", "لقول", "لقوله", "قوله", "تعالي", "سبحانه", "المولي", "ربنا", "وجل", "القران", "الايه"}
+
+        for m in segment_re.finditer(ar_text):
+            if _overlaps(m.start(), m.end()):
+                continue
+            seg_raw = m.group(0)
+            tok_matches = [
+                (tm.group(0), normalize_ar(tm.group(0)), m.start() + tm.start(), m.start() + tm.end())
+                for tm in re.finditer(r"\S+", seg_raw)
+            ]
+            toks = [(raw_w, nw, cs, ce) for raw_w, nw, cs, ce in tok_matches if nw]
+            if len(toks) < 3:
+                continue
+
+            stems = [_strip_ar_conjunction(t[1]) for t in toks]
+            i = 0
+            while i <= len(toks) - 3:
+                if _overlaps(toks[i][2], toks[i + 2][3]):
+                    i += 1
+                    continue
+                tg = f"{stems[i]} {stems[i + 1]} {stems[i + 2]}"
+                seeds = self.stem_trigram_index.get(tg)
+                if not seeds:
+                    i += 1
+                    continue
+
+                best_hit = None  # (word_len, verse_coverage, idx, s_tok, e_tok)
+                for v_idx, v_pos in seeds:
+                    ref, vnorm, _, _ = self.verses[v_idx]
+                    v_words = vnorm.split()
+                    if toks[i + 1][1] != v_words[v_pos + 1] or toks[i + 2][1] != v_words[v_pos + 2]:
+                        continue
+                    if toks[i][1] != v_words[v_pos] and stems[i] != _strip_ar_conjunction(v_words[v_pos]):
+                        continue
+
+                    s_tok, e_tok = i, i + 3
+                    vp = v_pos + 3
+                    while e_tok < len(toks) and vp < len(v_words):
+                        if toks[e_tok][1] == v_words[vp]:
+                            e_tok += 1
+                            vp += 1
+                        else:
+                            break
+
+                    w_len = e_tok - s_tok
+                    v_cov = w_len / max(len(v_words), 1)
+                    cand_key = (w_len, v_cov)
+                    if best_hit is None or cand_key > (best_hit[0], best_hit[1]):
+                        best_hit = (w_len, v_cov, v_idx, s_tok, e_tok)
+
+                if best_hit:
+                    w_len, v_cov, v_idx, s_tok, e_tok = best_hit
+                    matched_norm = " ".join(t[1] for t in toks[s_tok:e_tok])
+
+                    prev_norms = {toks[k][1] for k in range(max(0, s_tok - 7), s_tok)}
+                    before_slice = ar_text[max(0, toks[s_tok][2] - 6) : toks[s_tok][2]]
+                    has_cue = bool(prev_norms & cue_words) or (":" in before_slice) or ("：" in before_slice)
+
+                    min_req = 3 if (has_cue and v_cov >= 0.85) else 4
+                    if w_len >= min_req and matched_norm not in _PROSE_FORMULA_STOPLIST:
+                        if w_len >= 5 or has_cue or v_cov >= 0.45:
+                            ref, vnorm, _, cs = self.verses[v_idx]
+                            raw_snip = ar_text[toks[s_tok][2] : toks[e_tok - 1][3]].strip()
+                            matches.append(
+                                QuranMatch(
+                                    ref=ref,
+                                    ar_snippet=raw_snip,
+                                    cs_hrbek=cs,
+                                    is_partial=(v_cov < 0.85),
+                                    score=100.0,
+                                )
+                            )
+                            seen_char_spans.append((toks[s_tok][2], toks[e_tok - 1][3]))
+                            i = e_tok
+                            continue
+                i += 1
+
+        # Deduplicate by verse ref + normalized snippet while preserving order
         unique: list[QuranMatch] = []
         seen_keys: set[tuple[str, str]] = set()
         for qm in matches:
-            key = (qm.ref, normalize_ar(qm.ar_snippet))
+            key = (qm.ref, _strip_ar_conjunction(normalize_ar(qm.ar_snippet)))
             if key not in seen_keys:
                 seen_keys.add(key)
                 unique.append(qm)
         return unique
 
     def extract_hadith_matches(self, ar_text: str, quran_refs_spans: list[str]) -> list[HadithMatch]:
-        """Scan Prophetic quotes «...» / “...” against hadith_cs.json (478 HadeethEnc Hadiths)."""
+        """Scan Prophetic quotes against hadith_cs.json after stripping isnad/honorific boilerplate."""
         quran_norms = {normalize_ar(s) for s in quran_refs_spans}
-        quote_re = re.compile(r"«([^»]{15,1200})»|“([^”]{15,1200})”|\"([^\"]{15,1200})\"")
+        candidates: list[str] = []
+
+        # 1. Quoted or parenthesized segments
+        quote_re = re.compile(
+            r"«([^»]{15,1200})»|“([^”]{15,1200})”|\"([^\"]{15,1200})\"|'([^']{15,1200})'|\(([^()]{18,1200})\)"
+        )
+        for m in quote_re.finditer(ar_text):
+            candidates.append(next(g for g in m.groups() if g is not None).strip())
+
+        # 2. Unquoted clauses after Prophetic mentions (allowing parentheses around ﷺ / صلى الله عليه وسلم)
+        prophetic_intro_re = re.compile(
+            r"(?:رسول\s+الله|النبي|الحبيب|المصطفى)[^\n.؟!﴿﴾]{0,65}?(?:قال|يقول)\s*[:：]?\s*([^\n.؟!﴿﴾]{15,450})"
+            r"|(?:قال|يقول|سمعت)\s+(?:رسول\s+الله|النبي|الحبيب|المصطفى)[^\n:：.؟!﴿﴾]{0,65}[:：]\s*([^\n.؟!﴿﴾]{15,450})"
+        )
+        for m in prophetic_intro_re.finditer(ar_text):
+            cand = (m.group(1) or m.group(2)).strip()
+            candidates.append(cand)
+
         found: list[HadithMatch] = []
         seen_ids: set[str] = set()
 
-        for m in quote_re.finditer(ar_text):
-            raw_q = (m.group(1) or m.group(2) or m.group(3)).strip()
+        for raw_q in candidates:
             norm_q = normalize_ar(raw_q)
-            if len(norm_q.split()) < 4 or norm_q in quran_norms:
+            core_q = _clean_hadith_core(norm_q)
+            if len(core_q.split()) < 4 or norm_q in quran_norms:
                 continue
 
             counts: Counter[int] = Counter()
-            for bg in _bigrams(norm_q.split()):
+            for bg in _bigrams(core_q.split()):
                 for idx in self.hadith_bigrams.get(bg, ()):
                     counts[idx] += 1
             if not counts:
@@ -407,13 +555,14 @@ class ScriptureAndArchiveMatcher:
             best = None
             for idx, _ in counts.most_common(8):
                 h = self.hadiths[idx]
-                if not h["norm"]:
+                h_core = h.get("core_norm") or h["norm"]
+                if len(h_core.split()) < 4:
                     continue
-                s = fuzz.partial_ratio(norm_q, h["norm"])
-                # Require substantial overlap so generic 4-word phrases don't false-match a long hadith Story
-                aln = fuzz.partial_ratio_alignment(norm_q, h["norm"])
-                cov = (aln.dest_end - aln.dest_start) / max(len(h["norm"]), 1) if aln else 0.0
-                if s >= 88.0 and (cov >= 0.35 or len(norm_q) >= 45):
+                s = fuzz.partial_ratio(core_q, h_core)
+                aln = fuzz.partial_ratio_alignment(core_q, h_core)
+                matched_chars = (aln.dest_end - aln.dest_start) if aln else 0
+                cov = matched_chars / max(len(h_core), 1)
+                if s >= 90.0 and matched_chars >= 22 and (cov >= 0.35 or matched_chars >= 45):
                     if best is None or s > best[0]:
                         best = (s, h)
 
@@ -537,7 +686,7 @@ def main() -> None:
     print(f"📖 Matched Quran passages : {len(meta['quran_matches'])}")
     for q in meta["quran_matches"]:
         tag = "PARTIAL" if q.is_partial else "FULL"
-        print(f"   • ({q.ref}) [{tag} | score={q.score}] -> „{q.cs_hrbek[:95]}{'…' if len(q.cs_hrbek) > 95 else ''}“")
+        print(f"   • ({q.ref}) [{tag} | score={q.score}] AR: «{q.ar_snippet[:55]}» -> CS: „{q.cs_hrbek[:80]}…“")
     print(f"📜 Matched Hadiths        : {len(meta['hadith_matches'])}")
     for h in meta["hadith_matches"]:
         print(f"   • [ID {h.hadith_id} | score={h.score}] -> {h.cs_text[:95]}…")
