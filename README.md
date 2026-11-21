@@ -16,6 +16,29 @@ Designed for pre-written Arabic sermons read aloud as a Czech insert during the 
 
 - `src/` — Raw WordPress fetcher (`fetch_prague_raw.py`), dataset builder & QA verifier (`build_datasets.py`), Free-Tier streaming Gemini client (`gemini_client.py`), 70-sermon style discovery (`discover_strategy.py`), fuzzy scripture/few-shot matcher (`match_context.py`), and translator/post-processor (`translate.py`).
 
+## 🚀 Quick Start
+
+1. **Install dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+2. **Set your Google AI Studio Free-Tier API key** (in environment or local `.env`):
+   ```bash
+   export GEMINI_API_KEY="your_api_key_here"
+   ```
+
+3. **Translate an Arabic Friday sermon into Czech:**
+   ```bash
+   # Translate a pre-written Arabic sermon file (auto-detects date or override with --date YYYY-MM-DD)
+   python3 src/translate.py path/to/khutbah_ar.txt -o outputs/khutbah_cs.md --date 2026-11-27
+
+   # Inspect offline Quran/Hadith & archive matches only (0 API calls)
+   python3 src/match_context.py path/to/khutbah_ar.txt
+
+   # Test end-to-end on sermon #0 from prague_archive.json (self-match excluded from few-shot)
+   python3 src/translate.py --test-archive 0
+   ```
 
 ## 🙏 Credits & Upstream Acknowledgments
 

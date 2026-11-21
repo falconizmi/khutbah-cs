@@ -10,12 +10,12 @@ from pathlib import Path
 
 # Ordered from highest analytical quality to highest Free-Tier daily quota
 FREE_TIER_MODELS = [
+    "gemini-4-hydrogen",
     "gemini-3.8-flash",
     "gemini-3.6-flash",
     "gemini-3.5-flash-lite",
     "gemini-3.1-flash-lite",
 ]
-
 
 def load_api_key() -> str:
     """Read GEMINI_API_KEY / GOOGLE_API_KEY from environment or local .env file."""
@@ -52,7 +52,7 @@ def generate_stream(
     temperature: float = 0.2,
     thinking_level: str = "medium",
     stream_to_stdout: bool = True,
-    chunk_timeout: int = 90,
+    chunk_timeout: int = 150,
 ) -> tuple[str, str]:
     """
     Stream text from Gemini Free Tier with automatic 429/503 backoff and model fallback.
