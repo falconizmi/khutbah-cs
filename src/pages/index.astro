@@ -1,0 +1,11 @@
+---
+// src/pages/index.astro — Static HTML shell; client JS loaded via <script type="module">
+// No inline scripts — CSP script-src 'self' enforced.
+import Layout from "../layouts/Layout.astro";
+import App from "../components/App.astro";
+---
+
+<Layout>
+  <App />
+  <script type="module" src="/client/app.js"></script>
+</Layout>

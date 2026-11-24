@@ -1,0 +1,135 @@
+---
+// App.astro — Renders full UI shell statically; hydrates client-side for interactivity
+// All dynamic behavior lives in /client/app.js (imported via client:load)
+---
+
+<div class="app-container">
+
+  <!-- ===== HEADER + LANGUAGE SWITCHER =================================== -->
+  <header class="app-header">
+    <h1 data-i18n="page_title"></h1>
+    <p class="subtitle" data-i18n="subtitle"></p>
+
+    <div class="lang-switcher" dir="ltr">
+      <button class="lang-btn active" data-lang="cs">🇨🇿 Čeština</button>
+      <button class="lang-btn" data-lang="ar">🇸🇦 العربية</button>
+      <button class="lang-btn" data-lang="en">🇬🇧 English</button>
+    </div>
+  </header>
+
+  <!-- ===== API KEY BAR ================================================== -->
+  <div id="api-key-bar" class="card">
+    <label for="api-key-input" data-i18n="api_key_label"></label>
+
+    <div class="api-key-row">
+      <input type="password" id="api-key-input" placeholder="AIzaSy..." autocomplete="off" />
+      <button class="eye-btn" id="eye-btn" title="Show/Hide">👁</button>
+    </div>
+
+    <div class="remember-row">
+      <label><input type="checkbox" id="remember-key" /> <span data-i18n="remember_key"></span></label>
+    </div>
+
+    <details id="api-key-details">
+      <summary data-i18n="how_to_get_key"></summary>
+      <div class="how-to-steps">
+        <ol style="padding-left: 20px;">
+          <li data-i18n="how_to_key_step1"></li>
+          <li data-i18n="how_to_key_step2"></li>
+          <li data-i18n="how_to_key_step3"></li>
+        </ol>
+        <p class="security-tip" style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted);" data-i18n="how_to_key_security_tip"></p>
+      </div>
+    </details>
+  </div>
+
+  <!-- ===== ARABIC INPUT CARD ============================================ -->
+  <div class="card">
+    <div class="input-header">
+      <label data-i18n="arabic_input_label"></label>
+      <button id="upload-btn">
+        📎 <span data-i18n="upload_txt"></span>
+      </button>
+      <input type="file" id="file-upload-hidden" accept=".txt,.text" style="display:none" />
+    </div>
+
+    <textarea id="arabic-input" class="arabic-text" dir="rtl" lang="ar" placeholder="" data-i18n-placeholder="arabic_placeholder_cs"></textarea>
+
+    <!-- Controls Grid -->
+    <div class="controls-grid" style="margin-top: 16px;">
+      <div class="control-group">
+        <label data-i18n="friday_date_label"></label>
+        <input type="date" id="friday-date-input" />
+        <div class="date-preview-text">
+          <span data-i18n="date_preview"></span>
+          <strong id="date-preview"></strong>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <label data-i18n="output_versions_label"></label>
+        <select id="versions-select">
+          <option value="all" data-i18n-opt="opt_all_three">All 3 Versions</option>
+          <option value="full+condensed" selected data-i18n-opt="opt_full_condensed">Full + Condensed</option>
+          <option value="full+brief" data-i18n-opt="opt_full_brief">Full + Brief</option>
+          <option value="full_only" data-i18n-opt="opt_full_only">Full Only</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <label data-i18n="ai_model_label"></label>
+        <select id="model-select">
+          <option value="gemini-4-hydrogen" selected>gemini-4-hydrogen</option>
+          <option value="gemini-3.8-flash">gemini-3.8-flash</option>
+          <option value="gemini-3.6-flash">gemini-3.6-flash</option>
+          <option value="gemini-3.5-flash-lite">gemini-3.5-flash-lite</option>
+          <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="action-buttons">
+      <button id="btn-scripture" class="btn-secondary" data-i18n="check_scripture"></button>
+      <button id="btn-translate" class="btn-primary" data-i18n="translate_khutbah"></button>
+    </div>
+  </div>
+
+  <!-- ===== PROGRESS BAR ================================================= -->
+  <div id="progress-bar">
+    <div class="progress-steps">
+      <div class="progress-step"><span class="step-label" data-i18n="step_scripture"></span></div>
+      <div class="progress-step"><span class="step-label" data-i18n="step_translation"></span></div>
+      <div class="progress-step"><span class="step-label" data-i18n="step_polish"></span></div>
+      <div class="progress-step"><span class="step-label" data-i18n="step_condensing"></span></div>
+      <div class="progress-step"><span class="step-label" data-i18n="step_qa"></span></div>
+    </div>
+  </div>
+
+  <!-- ===== SCRIPTURE RESULTS PANEL ====================================== -->
+  <div id="scripture-panel" class="card">
+    <div id="scripture-results"></div>
+  </div>
+
+  <!-- ===== OUTPUT CARD ================================================== -->
+  <div id="output-card" class="card">
+    <div id="tab-bar"></div>
+    <div id="sermon-output-card" dir="ltr" lang="cs"></div>
+
+    <div class="action-bar">
+      <button class="action-btn" id="copy-btn" data-i18n="copy_text"></button>
+      <button class="action-btn" id="download-txt" data-i18n="download_txt"></button>
+      <button class="action-btn" id="download-md" data-i18n="download_md"></button>
+      <button class="action-btn" id="print-btn" data-i18n="print_a4"></button>
+    </div>
+  </div>
+
+  <!-- ===== DATASET INDICATOR ============================================ -->
+  <div id="dataset-indicator"></div>
+
+  <!-- ===== FOOTER ======================================================= -->
+  <footer class="app-footer">
+    <span data-i18n="privacy_notice"></span>
+  </footer>
+
+</div>

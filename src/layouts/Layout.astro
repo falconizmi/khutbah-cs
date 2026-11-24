@@ -1,0 +1,38 @@
+---
+// Layout.astro — Root layout for all pages
+// Security: CSP, X-Frame-Options, Referrer-Policy via <meta http-equiv>
+---
+
+<!DOCTYPE html>
+<html lang="cs" dir="ltr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <!-- Security: CSP — no inline scripts, only self + Gemini API -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://generativelanguage.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; script-src 'self'; frame-ancestors 'none';" />
+
+  <!-- Security: prevent clickjacking -->
+  <meta http-equiv="X-Frame-Options" content="DENY" />
+
+  <!-- Security: limit referrer leakage -->
+  <meta name="referrer" content="strict-origin-when-cross-origin" />
+
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕌</text></svg>" />
+
+  <!-- Google Fonts: Plus Jakarta Sans (CS/EN) + Noto Naskh Arabic (AR) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+
+  <link rel="stylesheet" href="/styles/styles.css" />
+
+  <slot name="head" />
+</head>
+<body>
+  <slot />
+</body>
+</html>
