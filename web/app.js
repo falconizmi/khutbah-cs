@@ -69,29 +69,12 @@ function initDateDefaults() {
 
 function updateApiKeyUI() {
   const bar = document.getElementById("api-key-bar");
-  const statusLine = document.getElementById("api-key-status");
   if (!bar) return;
 
   if (State.apiKey && State.apiKey.length >= 10) {
-    // Collapsed status mode — accept any key with reasonable length (AIza..., AQ.Ab8..., etc.)
     bar.setAttribute("data-key-ready", "true");
-    // Close details panel in collapsed mode so Settings link opens it
-    const details = document.getElementById("api-key-details");
-    if (details) details.open = false;
-    if (statusLine) {
-      statusLine.innerHTML = `${t("key_ready")} • Model: <strong>${State.model}</strong> <a href="#" class="settings-link" data-action="toggle-api-key">${t("how_to_get_key")}</a>`;
-    }
   } else {
     bar.setAttribute("data-key-ready", "false");
-    // Clear stale status content so Settings link disappears when no key
-    if (statusLine) statusLine.innerHTML = "";
-  }
-}
-
-function toggleApiKeyBar() {
-  const details = document.getElementById("api-key-details");
-  if (details) {
-    details.open = !details.open;
   }
 }
 
@@ -215,16 +198,6 @@ function initControls() {
     btn.addEventListener("click", () => setLang(btn.getAttribute("data-lang")));
   });
 
-  // Event delegation for settings link (CSP-safe, no inline onclick)
-  const statusWrap = document.getElementById("api-key-status-line-wrap");
-  if (statusWrap) {
-    statusWrap.addEventListener("click", (e) => {
-      if (e.target.closest("[data-action='toggle-api-key']")) {
-        e.preventDefault();
-        toggleApiKeyBar();
-      }
-    });
-  }
 
   // Remember checkbox: unchecking immediately clears localStorage
   const rememberCb = document.getElementById("remember-key");
@@ -310,7 +283,7 @@ async function runFullTranslation() {
   const arText = document.getElementById("arabic-input").value.trim();
   if (!arText) return alert(t("arabic_placeholder_en"));
   if (!State.apiKey || State.apiKey.length < 10) {
-    return alert("Please enter a valid Gemini API key.");
+    return alert(t("err_no_api_key"));
   }
 
   // Loading state on button — spinning indicator
@@ -412,7 +385,7 @@ async function runFullTranslation() {
 
   } catch (err) {
     console.error("Translation failed:", err);
-    alert(`Generation failed: ${err.message}`);
+    alert(`${t("err_generation_failed")} ${err.message}`);
   } finally {
     // Restore button state
     if (btn) {
@@ -610,7 +583,7 @@ async function ensureMatcherLoaded() {
   }
 
   console.error("Could not load any dataset path.");
-  alert("Failed to load scripture datasets. Check that data files are accessible.");
+  alert(t("err_dataset_load"));
 }
 
 function updateDatasetIndicator(status) {

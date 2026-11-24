@@ -57,6 +57,10 @@ const I18N = {
     // Security tip + privacy notice
     how_to_key_security_tip: "Volitelné: v Google Cloud Console → Credentials omezte klíč na Website restrictions (referrer: https://VAŠE-UŽIVATELSKÉ-JMÉNO.github.io/*) a API restrictions: Generative Language API.",
     privacy_notice: "Bez serveru: váš API klíč zůstává pouze ve vašem prohlížeči a komunikuje přímo s Google Gemini API (generativelanguage.googleapis.com). Na sdílených počítačích nezaškrtávejte uložení klíče.",
+    // Error messages
+    err_no_api_key: "Prosím zadejte platný klíč Gemini API.",
+    err_generation_failed: "Generace selhala:",
+    err_dataset_load: "Nepodařilo se načíst datasety. Zkontrolujte dostupnost datových souborů.",
   },
   ar: {
     page_title: "مترجم خطب الجمعة",
@@ -111,6 +115,10 @@ const I18N = {
     how_to_key_security_tip: "اختياري: في Google Cloud Console → بيانات الاعتماد، قيّد المفتاح على Website restrictions (مرجع HTTP: https://YOUR-USERNAME.github.io/*) و API restrictions: Generative Language API.",
     privacy_notice: "بدون خادم وسيط: يبقى مفتاح API في متصفحك ويتصل مباشرةً بواجهة Google Gemini الرسمية. لا تفعّل خيار حفظ المفتاح على الأجهزة المشتركة.",
     sermons_count: "خطب في الأرشيف",
+    // Error messages
+    err_no_api_key: "يرجى إدخال مفتاح Gemini API صالح.",
+    err_generation_failed: "فشل التوليد:",
+    err_dataset_load: "فشل تحميل بيانات القرآن والأحاديث. تحقق من توفر الملفات.",
   },
   en: {
     page_title: "Friday Khutbah Translator",
@@ -165,6 +173,10 @@ const I18N = {
     privacy_notice: "No backend server: your API key stays in your browser and connects directly to Google Gemini API (generativelanguage.googleapis.com). Leave 'Save key on this device' unchecked on shared computers.",
     hadiths_count: "hadiths",
     sermons_count: "archive sermons",
+    // Error messages
+    err_no_api_key: "Please enter a valid Gemini API key.",
+    err_generation_failed: "Generation failed:",
+    err_dataset_load: "Failed to load scripture datasets. Check that data files are accessible.",
   },
 };
 

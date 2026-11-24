@@ -32,27 +32,23 @@
   </header>
 
   <!-- ===== API KEY BAR ================================================== -->
-  <div id="api-key-bar" class="card" data-key-ready="false">
-    <div id="api-key-status-line-wrap">
-      <span id="api-key-status"></span>
+  <div id="api-key-bar" class="card">
+    <label for="api-key-input" data-i18n="api_key_label"></label>
+
+    <div class="api-key-row">
+      <input type="password" id="api-key-input" placeholder="AIzaSy..."
+             autocomplete="off">
+      <button class="eye-btn" id="eye-btn" title="Show/Hide">👁</button>
     </div>
 
-    <details id="api-key-details" open>
+    <div class="remember-row">
+      <label><input type="checkbox" id="remember-key"> <span data-i18n="remember_key"></span></label>
+      <button id="forget-key-btn" style="background:none;border:none;color:var(--secondary);cursor:pointer;font-size:0.85rem;" data-i18n="forget_key"></button>
+    </div>
+
+    <details id="api-key-details">
       <summary data-i18n="how_to_get_key"></summary>
-
-      <div class="api-key-row" style="margin-top: 12px;">
-        <input type="password" id="api-key-input" placeholder="AIzaSy..."
-               autocomplete="off">
-        <button class="eye-btn" id="eye-btn" title="Show/Hide">👁</button>
-      </div>
-
-      <div class="remember-row">
-        <label><input type="checkbox" id="remember-key"> <span data-i18n="remember_key"></span></label>
-        <button id="forget-key-btn" style="background:none;border:none;color:var(--secondary);cursor:pointer;font-size:0.85rem;" data-i18n="forget_key"></button>
-      </div>
-
       <div class="how-to-steps">
-        <p><strong data-i18n="how_to_get_key"></strong></p>
         <ol style="padding-left: 20px;">
           <li data-i18n="how_to_key_step1"></li>
           <li data-i18n="how_to_key_step2"></li>
