@@ -6,6 +6,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+from typing import Callable
 from pathlib import Path
 
 # Ordered from highest analytical quality to highest Free-Tier daily quota
@@ -53,12 +54,19 @@ def generate_stream(
     thinking_level: str = "medium",
     stream_to_stdout: bool = True,
     chunk_timeout: int = 150,
+    api_key: str | None = None,
+    on_chunk: Callable[[str], None] | None = None,
 ) -> tuple[str, str]:
     """
     Stream text from Gemini Free Tier with automatic 429/503 backoff and model fallback.
     Returns (generated_text, model_used).
     """
-    api_key = load_api_key()
+    resolved_key = api_key or os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
+    if not resolved_key:
+        try:
+            resolved_key = load_api_key()
+        except SystemExit:
+            raise SystemExit("❌ No API key provided. Pass api_key=..., set GEMINI_API_KEY, or place .env file.") from None
     models_to_try = [preferred_model] + [m for m in FREE_TIER_MODELS if m != preferred_model]
 
     payload = {
@@ -74,7 +82,7 @@ def generate_stream(
     for model in models_to_try:
         url = (
             f"https://generativelanguage.googleapis.com/v1beta/models/"
-            f"{model}:streamGenerateContent?alt=sse&key={api_key}"
+            f"{model}:streamGenerateContent?alt=sse&key={resolved_key}"
         )
         retries = 2
         for attempt in range(1, retries + 1):
@@ -113,6 +121,8 @@ def generate_stream(
                                 if stream_to_stdout:
                                     sys.stdout.write(txt)
                                     sys.stdout.flush()
+                                if on_chunk is not None:
+                                    on_chunk(txt)
                                 chunks.append(txt)
 
                 if stream_to_stdout:

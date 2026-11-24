@@ -14,6 +14,7 @@ import argparse
 import re
 from difflib import SequenceMatcher
 from pathlib import Path
+from typing import Callable
 
 from gemini_client import generate_stream
 from match_context import (
@@ -24,6 +25,7 @@ from match_context import (
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 PROMPT_FILE = BASE_DIR / "prompts" / "translation_prompt.md"
+CONDENSE_PROMPT_FILE = BASE_DIR / "prompts" / "condense_prompt.md"
 
 POLISH_SYSTEM_PROMPT = """You are a native Czech literary editor proofreading a Czech Friday sermon (khutbah) before it is read aloud in a mosque.
 
@@ -136,6 +138,43 @@ def postprocess_and_verify(
     return cs_text, warnings
 
 
+def condense_czech_sermon(
+    full_cs: str,
+    matcher: ScriptureAndArchiveMatcher,
+    mode: str = "condensed",
+    preferred_model: str = "gemini-4-hydrogen",
+    api_key: str | None = None,
+    on_chunk: Callable[[str], None] | None = None,
+) -> tuple[str, list[str]]:
+    """Condense a verified full Czech sermon into a shorter spoken-pulpit version.
+    
+    mode: "condensed" (~45-55%, 450-600 words) or "brief" (~25-30%, 250-350 words).
+    """
+    condense_prompt = CONDENSE_PROMPT_FILE.read_text(encoding="utf-8")
+    
+    tier_label = "Condensed (~4–5 min)" if mode == "condensed" else "Brief (~2–3 min)"
+    print(f"✂️  [Pass 3] Generating {tier_label} Czech pulpit insert via Free-Tier Gemini (preferred={preferred_model})...\n")
+    
+    tier_instruction = f"[LENGTH TIER: {mode.upper()}]\n\n"
+
+    short_draft, model_used = generate_stream(
+        system_prompt=condense_prompt + "\n\n" + tier_instruction,
+        user_text=f"[FULL VERIFIED CZECH SERMON TO CONDENSE]\n{full_cs}",
+        preferred_model=preferred_model,
+        temperature=0.2,
+        thinking_level="low",
+        stream_to_stdout=True,
+        chunk_timeout=150,
+        api_key=api_key,
+        on_chunk=on_chunk,
+    )
+
+    print(f"✂️  [Pass 3 done via {model_used}] -> Running postprocess & verify on shortened version...\n")
+
+    short_final, warnings = postprocess_and_verify(short_draft, matcher)
+    return short_final, warnings
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Translate an Arabic Friday sermon into Czech")
     parser.add_argument("input", nargs="?", help="Path to input Arabic .txt file")
@@ -144,6 +183,13 @@ def main() -> None:
     parser.add_argument("--few-shot", type=int, default=2, help="Number of similar Prague sermons to include (default: 2)")
     parser.add_argument("--model", default="gemini-4-hydrogen", help="Preferred Free-Tier Gemini model (default: gemini-4-hydrogen)")
     parser.add_argument("--no-polish", action="store_true", help="Skip Pass 2 Czech proofreading (saves 1 API call during quick tests)")
+    parser.add_argument(
+        "--lengths",
+        choices=["full", "condensed", "brief", "all"],
+        default="full",
+        help="Which length tier(s) to generate: full (default), condensed (~4-5 min), brief (~2-3 min), or all",
+    )
+    parser.add_argument("--with-short", action="store_true", help="(Alias for --lengths=condensed) Also generate a shortened ~450-600 word spoken-pulpit version")
     parser.add_argument(
         "--test-archive",
         type=int,
@@ -154,6 +200,13 @@ def main() -> None:
 
     if not args.input and args.test_archive is None:
         parser.error("Provide an input Arabic file OR pass `--test-archive 0` to run a test translation.")
+
+    # Resolve length modes to generate
+    lengths = set(args.lengths.split(",")) if "," in args.lengths else {args.lengths}
+    if args.with_short and "condensed" not in lengths:
+        lengths.add("condensed")
+    if "all" in lengths:
+        lengths = {"full", "condensed", "brief"}
 
     matcher = ScriptureAndArchiveMatcher()
     if args.test_archive is not None:
@@ -213,15 +266,39 @@ def main() -> None:
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(final_cs + "\n", encoding="utf-8")
+    print(f"\n✅ Saved full version -> {out_path}")
 
-    print(f"\n✅ Saved Czech sermon -> {out_path} ({used_model_str})")
+    # Generate condensed and/or brief variants from the verified full text
+    for mode in ("condensed", "brief"):
+        if mode not in lengths:
+            continue
+        
+        tier_label = "Condensed (~4–5 min)" if mode == "condensed" else "Brief (~2–3 min)"
+        short_cs, short_warnings = condense_czech_sermon(
+            full_cs=final_cs,
+            matcher=matcher,
+            mode=mode,
+            preferred_model=args.model,
+        )
+        
+        stem = out_path.stem
+        suffix = out_path.suffix
+        variant_suffix = "_condensed" if mode == "condensed" else "_brief"
+        variant_path = out_path.with_name(f"{stem}{variant_suffix}{suffix}")
+        variant_path.parent.mkdir(parents=True, exist_ok=True)
+        variant_path.write_text(short_cs + "\n", encoding="utf-8")
+        
+        print(f"\n✅ Saved {tier_label.lower()} version -> {variant_path}")
+        if short_warnings:
+            print(f"🔎 {tier_label} QA Notes:")
+            for w in short_warnings:
+                print(f"   • {w}")
+        else:
+            print(f"✨ {tier_label} QA: 0 warnings (100% Hrbek lock)!")
+
     if warnings:
         print("🔎 Post-Processing & Hrbek QA Notes:")
         for w in warnings:
             print(f"   • {w}")
     else:
         print("✨ Post-Processing & Hrbek QA: 0 warnings (all quotes balanced, zero script leaks, 100% Hrbek lock)!")
-
-
-if __name__ == "__main__":
-    main()

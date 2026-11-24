@@ -15,4 +15,6 @@ __pycache__/
 .DS_Store
 outputs/
 *.tmp
+# GitHub Pages build output (assembled by CI, never committed)
+_site/
 inputs/

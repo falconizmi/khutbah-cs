@@ -1,0 +1,46 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Assemble _site for GitHub Pages
+        run: |
+          mkdir -p _site/assets/data _site/assets/prompts
+          # Copy web app files
+          cp web/index.html web/styles.css web/i18n.js web/matcher.js web/gemini.js web/app.js _site/
+          # Copy processed data JSON (zero duplication — same files, different path)
+          cp data/processed/quran_cs.json data/processed/hadith_cs.json data/processed/prague_archive.json _site/assets/data/
+          # Copy prompt templates
+          cp prompts/translation_prompt.md prompts/condense_prompt.md _site/assets/prompts/
+          # Tell GitHub Pages not to process Jekyll
+          touch _site/.nojekyll
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "_site"
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
