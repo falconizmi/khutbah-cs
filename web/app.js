@@ -79,7 +79,7 @@ function updateApiKeyUI() {
     const details = document.getElementById("api-key-details");
     if (details) details.open = false;
     if (statusLine) {
-      statusLine.innerHTML = `${t("key_ready")} • Model: <strong>${State.model}</strong> <a href="#" onclick="toggleApiKeyBar(); return false;" class="settings-link">${t("key_settings")}</a>`;
+      statusLine.innerHTML = `${t("key_ready")} • Model: <strong>${State.model}</strong> <a href="#" class="settings-link" data-action="toggle-api-key">${t("key_settings")}</a>`;
     }
   } else {
     bar.setAttribute("data-key-ready", "false");
@@ -94,6 +94,7 @@ function toggleApiKeyBar() {
     details.open = !details.open;
   }
 }
+
 
 /** Called when user types/pastes an API key. */
 function onApiKeyChange(input) {
@@ -206,6 +207,27 @@ function initControls() {
     verSelect.value = State.outputVersions;
     verSelect.addEventListener("change", () => {
       State.outputVersions = verSelect.value;
+    });
+  }
+
+  // Event delegation for settings link (CSP-safe, no inline onclick)
+  const statusWrap = document.getElementById("api-key-status-line-wrap");
+  if (statusWrap) {
+    statusWrap.addEventListener("click", (e) => {
+      if (e.target.closest("[data-action='toggle-api-key']")) {
+        e.preventDefault();
+        toggleApiKeyBar();
+      }
+    });
+  }
+
+  // Remember checkbox: unchecking immediately clears localStorage
+  const rememberCb = document.getElementById("remember-key");
+  if (rememberCb) {
+    rememberCb.addEventListener("change", () => {
+      if (!rememberCb.checked) {
+        localStorage.removeItem("khutbah_api_key");
+      }
     });
   }
 }
