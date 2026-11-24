@@ -10,10 +10,9 @@ const I18N = {
     // API Key bar
     api_key_label: "Klíč Gemini AI (volitelné)",
     api_key_placeholder: "AIzaSy...",
-    remember_key: "Zapamatovat v tomto prohlížeči",
+    remember_key: "Uložit klíč na toto zařízení",
     forget_key: "Zapomenout klíč",
     key_ready: "🔑 Klíč připraven",
-    key_settings: "[Nastavení]",
     how_to_get_key: "Jak získat bezplatný API klíč?",
     how_to_key_step1: "Přejděte na console.cloud.google.com a vytvořte nový projekt.",
     how_to_key_step2: "Povolte Gemini API (v sekci Library vyhledejte „Generative Language“).",
@@ -54,6 +53,9 @@ const I18N = {
     verses_count: "veršů",
     hadiths_count: "hadísů",
     sermons_count: "kázání v archivu",
+    // Security tip + privacy notice
+    how_to_key_security_tip: "Volitelné: v Google Cloud Console → Credentials omezte klíč na Website restrictions (referrer: https://VAŠE-UŽIVATELSKÉ-JMÉNO.github.io/*) a API restrictions: Generative Language API.",
+    privacy_notice: "Bez serveru: váš API klíč zůstává pouze ve vašem prohlížeči a komunikuje přímo s Google Gemini API (generativelanguage.googleapis.com). Na sdílených počítačích nezaškrtávejte uložení klíče.",
   },
   ar: {
     page_title: "مترجم خطب الجمعة",
@@ -61,10 +63,9 @@ const I18N = {
     // API Key bar
     api_key_label: "مفتاح Gemini AI (اختياري)",
     api_key_placeholder: "AIzaSy...",
-    remember_key: "تذكر في هذا المتصفح",
+    remember_key: "احفظ المفتاح على هذا الجهاز",
     forget_key: "نسيان المفتاح",
     key_ready: "🔑 المفتاح جاهز",
-    key_settings: "[الإعدادات]",
     how_to_get_key: "كيف تحصل على مفتاح API مجاني؟",
     how_to_key_step1: "انتقل إلى console.cloud.google.com وأنشئ مشروعًا جديدًا.",
     how_to_key_step2: "فعّل واجهة Gemini API (ابحث عن „Generative Language“ في قسم Library).",
@@ -104,6 +105,9 @@ const I18N = {
     dataset_ready: "البيانات جاهزة",
     verses_count: "آيات",
     hadiths_count: "أحاديث نبوية",
+    // Security tip + privacy notice
+    how_to_key_security_tip: "اختياري: في Google Cloud Console → بيانات الاعتماد، قيّد المفتاح على Website restrictions (مرجع HTTP: https://YOUR-USERNAME.github.io/*) و API restrictions: Generative Language API.",
+    privacy_notice: "بدون خادم وسيط: يبقى مفتاح API في متصفحك ويتصل مباشرةً بواجهة Google Gemini الرسمية. لا تفعّل خيار حفظ المفتاح على الأجهزة المشتركة.",
     sermons_count: "خطب في الأرشيف",
   },
   en: {
@@ -112,10 +116,9 @@ const I18N = {
     // API Key bar
     api_key_label: "Gemini AI API Key (optional)",
     api_key_placeholder: "AIzaSy...",
-    remember_key: "Remember in this browser",
+    remember_key: "Save key on this device",
     forget_key: "Forget key",
     key_ready: "🔑 API Key Ready",
-    key_settings: "[Settings]",
     how_to_get_key: "How to get a free API key?",
     how_to_key_step1: "Go to console.cloud.google.com and create a new project.",
     how_to_key_step2: "Enable the Gemini API (search for „Generative Language“ in Library).",
@@ -154,6 +157,9 @@ const I18N = {
     // Dataset indicator
     dataset_ready: "Dataset ready",
     verses_count: "verses",
+    // Security tip + privacy notice
+    how_to_key_security_tip: "Optional: in Google Cloud Console → Credentials, restrict your API key to Website restrictions (HTTP referrers: https://YOUR-USERNAME.github.io/*) and API restrictions: Generative Language API.",
+    privacy_notice: "No backend server: your API key stays in your browser and connects directly to Google Gemini API (generativelanguage.googleapis.com). Leave 'Save key on this device' unchecked on shared computers.",
     hadiths_count: "hadiths",
     sermons_count: "archive sermons",
   },

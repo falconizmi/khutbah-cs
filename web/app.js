@@ -31,12 +31,16 @@ document.addEventListener("DOMContentLoaded", () => {
   applyLanguage(getLang());
 });
 
-/** Restore API key from localStorage; update UI. */
+/** Restore API key from localStorage only if it was previously saved (remember checkbox was checked). */
 function initApiKey() {
   const saved = localStorage.getItem("khutbah_api_key");
   if (saved) {
     State.apiKey = saved;
-    document.getElementById("api-key-input").value = saved;
+    const input = document.getElementById("api-key-input");
+    if (input) input.value = saved;
+    // Check the remember box since key was persisted before
+    const cb = document.getElementById("remember-key");
+    if (cb) cb.checked = true;
   }
   updateApiKeyUI();
 }

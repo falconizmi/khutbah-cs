@@ -6,6 +6,9 @@
   <title data-i18n="page_title">Překladač pátečních kázání</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕌</text></svg>">
 
+  <!-- Strict CSP: block all inline scripts; allow only self + Gemini API -->
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://generativelanguage.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; script-src 'self';">
+
   <!-- Google Fonts: Plus Jakarta Sans (CS/EN) + Noto Naskh Arabic (AR) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,9 +25,9 @@
     <p class="subtitle" data-i18n="subtitle"></p>
 
     <div class="lang-switcher" dir="ltr">
-      <button class="lang-btn active" onclick="setLang('cs')">🇨🇿 Čeština</button>
-      <button class="lang-btn" onclick="setLang('ar')">🇸🇦 العربية</button>
-      <button class="lang-btn" onclick="setLang('en')">🇬🇧 English</button>
+      <button class="lang-btn active" data-lang="cs">🇨🇿 Čeština</button>
+      <button class="lang-btn" data-lang="ar">🇸🇦 العربية</button>
+      <button class="lang-btn" data-lang="en">🇬🇧 English</button>
     </div>
   </header>
 
@@ -39,13 +42,13 @@
 
       <div class="api-key-row" style="margin-top: 12px;">
         <input type="password" id="api-key-input" placeholder="AIzaSy..."
-               oninput="onApiKeyChange(this)" autocomplete="off">
-        <button class="eye-btn" onclick="toggleKeyVisibility()" title="Show/Hide">👁</button>
+               autocomplete="off">
+        <button class="eye-btn" id="eye-btn" title="Show/Hide">👁</button>
       </div>
 
       <div class="remember-row">
-        <label><input type="checkbox" id="remember-key" checked> <span data-i18n="remember_key"></span></label>
-        <button onclick="forgetApiKey()" style="background:none;border:none;color:var(--secondary);cursor:pointer;font-size:0.85rem;" data-i18n="forget_key"></button>
+        <label><input type="checkbox" id="remember-key"> <span data-i18n="remember_key"></span></label>
+        <button id="forget-key-btn" style="background:none;border:none;color:var(--secondary);cursor:pointer;font-size:0.85rem;" data-i18n="forget_key"></button>
       </div>
 
       <div class="how-to-steps">
@@ -55,6 +58,7 @@
           <li data-i18n="how_to_key_step2"></li>
           <li data-i18n="how_to_key_step3"></li>
         </ol>
+        <p class="security-tip" style="margin-top: 10px; font-size: 0.85rem; color: var(--text-muted);" data-i18n="how_to_key_security_tip"></p>
       </div>
     </details>
   </div>
@@ -63,12 +67,11 @@
   <div class="card">
     <div class="input-header">
       <label data-i18n="arabic_input_label"></label>
-      <button id="upload-btn" onclick="document.getElementById('file-upload-hidden').click()">
+      <button id="upload-btn">
         📎 <span data-i18n="upload_txt"></span>
       </button>
-    <input type="file" id="file-upload-hidden" accept=".txt,.text" style="display:none" onchange="if(this.files[0])loadFile(this.files[0])">
+      <input type="file" id="file-upload-hidden" accept=".txt,.text" style="display:none">
     </div>
-
 
     <textarea id="arabic-input" class="arabic-text" dir="rtl" lang="ar"
               placeholder="Zde vložte arabský text pátečního kázání (khutba)..."
@@ -78,7 +81,7 @@
     <div class="controls-grid" style="margin-top: 16px;">
       <div class="control-group">
         <label data-i18n="friday_date_label"></label>
-        <input type="date" id="friday-date-input" onchange="onDateChange(this)">
+        <input type="date" id="friday-date-input">
         <div class="date-preview-text">
           <span data-i18n="date_preview"></span>
           <strong id="date-preview"></strong>
@@ -136,10 +139,10 @@
     <div id="sermon-output-card" dir="ltr" lang="cs"></div>
 
     <div class="action-bar">
-      <button class="action-btn" onclick="copyCurrentTab()" data-i18n="copy_text"></button>
+      <button class="action-btn" id="copy-btn" data-i18n="copy_text"></button>
       <button class="action-btn" id="download-txt" data-i18n="download_txt"></button>
       <button class="action-btn" id="download-md" data-i18n="download_md"></button>
-      <button class="action-btn" onclick="printCurrentTab()" data-i18n="print_a4"></button>
+      <button class="action-btn" id="print-btn" data-i18n="print_a4"></button>
     </div>
   </div>
 
@@ -148,8 +151,7 @@
 
   <!-- ===== FOOTER ======================================================= -->
   <footer class="app-footer">
-    Khutbah CS — Offline Quran & Hadith verification • Gemini AI translation<br>
-    Zero data leaves your browser until you click Translate.
+    <span data-i18n="privacy_notice"></span>
   </footer>
 
 </div>
@@ -159,21 +161,6 @@
 <script src="./matcher.js"></script>
 <script src="./gemini.js"></script>
 <script src="./app.js"></script>
-
-<!-- Toggle API key visibility helper -->
-<script>
-function toggleKeyVisibility() {
-  const inp = document.getElementById('api-key-input');
-  const btn = event.currentTarget;
-  if (inp.type === 'password') {
-    inp.type = 'text';
-    btn.textContent = '🔓';
-  } else {
-    inp.type = 'password';
-    btn.textContent = '👁';
-  }
-}
-</script>
 
 </body>
 </html>
