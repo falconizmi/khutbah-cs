@@ -8,7 +8,7 @@ const I18N = {
     page_title: "Překladač pátečních kázání",
     subtitle: "Online nástroj pro překlad arabských kázání do češtiny s ověřením veršů z Koránu a hadísů",
     // API Key bar
-    api_key_label: "Klíč Gemini AI (volitelné)",
+    api_key_label: "Klíč Gemini AI",
     api_key_placeholder: "AIzaSy...",
     remember_key: "Uložit klíč na toto zařízení",
     forget_key: "Zapomenout klíč",
@@ -66,7 +66,7 @@ const I18N = {
     page_title: "مترجم خطب الجمعة",
     subtitle: "أداة عبر الإنترنت لترجمة الخطب العربية إلى التشيكية مع التحقق من الآيات القرآنية والأحاديث النبوية",
     // API Key bar
-    api_key_label: "مفتاح Gemini AI (اختياري)",
+    api_key_label: "مفتاح Gemini AI",
     api_key_placeholder: "AIzaSy...",
     remember_key: "احفظ المفتاح على هذا الجهاز",
     forget_key: "نسيان المفتاح",
@@ -124,7 +124,7 @@ const I18N = {
     page_title: "Friday Khutbah Translator",
     subtitle: "Online tool for translating Arabic Friday sermons into Czech with Quran & Hadith verification",
     // API Key bar
-    api_key_label: "Gemini AI API Key (optional)",
+    api_key_label: "Gemini AI API Key",
     api_key_placeholder: "AIzaSy...",
     remember_key: "Save key on this device",
     forget_key: "Forget key",

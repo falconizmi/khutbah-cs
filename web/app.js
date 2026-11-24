@@ -94,13 +94,6 @@ function onApiKeyChange(input) {
   }
 }
 
-function forgetApiKey() {
-  State.apiKey = "";
-  const input = document.getElementById("api-key-input");
-  if (input) input.value = "";
-  localStorage.removeItem("khutbah_api_key");
-  updateApiKeyUI();
-}
 
 /* ------------------------------------------------------------------ */
 /*  DATE PREVIEW                                                       */

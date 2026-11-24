@@ -110,9 +110,6 @@ body {
   transition: all .3s;
 }
 
-/* When key is ready, show status line; when no key, hide it */
-#api-key-bar[data-key-ready="true"] #api-key-status-line-wrap { display: block !important; }
-#api-key-bar[data-key-ready="false"] #api-key-status-line-wrap { display: none !important; }
 .api-key-row {
   display: flex;
   gap: 10px;
@@ -147,12 +144,6 @@ body {
   color: var(--text-muted);
 }
 
-.settings-link {
-  color: var(--primary-light);
-  cursor: pointer;
-  text-decoration: underline;
-  font-size: 0.85rem;
-}
 
 #api-key-details summary {
   cursor: pointer;
