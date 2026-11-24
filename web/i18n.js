@@ -219,7 +219,7 @@ function applyLanguage(lang) {
 
   // Update active state on language switcher buttons
   document.querySelectorAll(".lang-btn").forEach(btn => {
-    const btnLang = btn.getAttribute("onclick")?.match(/setLang\('(\w+)'\)/)?.[1];
+    const btnLang = btn.getAttribute("data-lang");
     btn.classList.toggle("active", btnLang === lang);
   });
 

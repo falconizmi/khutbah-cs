@@ -79,7 +79,7 @@ function updateApiKeyUI() {
     const details = document.getElementById("api-key-details");
     if (details) details.open = false;
     if (statusLine) {
-      statusLine.innerHTML = `${t("key_ready")} • Model: <strong>${State.model}</strong> <a href="#" class="settings-link" data-action="toggle-api-key">${t("key_settings")}</a>`;
+      statusLine.innerHTML = `${t("key_ready")} • Model: <strong>${State.model}</strong> <a href="#" class="settings-link" data-action="toggle-api-key">${t("how_to_get_key")}</a>`;
     }
   } else {
     bar.setAttribute("data-key-ready", "false");
@@ -210,6 +210,11 @@ function initControls() {
     });
   }
 
+  // Language switcher buttons
+  document.querySelectorAll(".lang-btn").forEach(btn => {
+    btn.addEventListener("click", () => setLang(btn.getAttribute("data-lang")));
+  });
+
   // Event delegation for settings link (CSP-safe, no inline onclick)
   const statusWrap = document.getElementById("api-key-status-line-wrap");
   if (statusWrap) {
@@ -294,6 +299,7 @@ async function runScriptureCheck() {
     if (btn) {
       btn.classList.remove("loading");
       btn.textContent = origLabel;
+      btn.disabled = false;
     }
     setProgress(-1, "");
   }
@@ -412,6 +418,7 @@ async function runFullTranslation() {
     if (btn) {
       btn.classList.remove("loading");
       btn.textContent = origLabel;
+      btn.disabled = false;
     }
     setProgress(-1, "");
   }
