@@ -18,3 +18,8 @@ outputs/
 # GitHub Pages build output (assembled by CI, never committed)
 _site/
 inputs/
+
+# Node.js & Astro
+node_modules/
+.astro/
+dist/
