@@ -63,6 +63,10 @@ const I18N = {
     err_dataset_load: "Nepodařilo se načíst datasety. Zkontrolujte dostupnost datových souborů.",
     err_file_too_large: "Soubor je příliš velký (max 1 MB).",
     err_file_read_failed: "Nelze přečíst soubor.",
+    // Model and few-shot labels
+    model_used: "Model použit pro překlad",
+    few_shot_single: "Referenční kázání z archivu",
+    few_shot_sermons: "referenčních kázání z archivu",
   },
   ar: {
     page_title: "مترجم خطب الجمعة",
@@ -123,6 +127,10 @@ const I18N = {
     err_dataset_load: "فشل تحميل بيانات القرآن والأحاديث. تحقق من توفر الملفات.",
     err_file_too_large: "الملف كبير جداً (الحد الأقصى 1 ميجابايت).",
     err_file_read_failed: "تعذر قراءة الملف.",
+    // Model and few-shot labels
+    model_used: "النموذج المستخدم للترجمة",
+    few_shot_single: "خطبة مرجعية من الأرشيف",
+    few_shot_sermons: "خطب مرجعية من الأرشيف",
   },
   en: {
     page_title: "Friday Khutbah Translator",
@@ -183,6 +191,10 @@ const I18N = {
     err_dataset_load: "Failed to load scripture datasets. Check that data files are accessible.",
     err_file_too_large: "File too large (max 1 MB).",
     err_file_read_failed: "Could not read file.",
+    // Model and few-shot labels
+    model_used: "Model used for translation",
+    few_shot_single: "Reference sermon from archive",
+    few_shot_sermons: "reference sermons from archive",
   },
 };
 
@@ -235,10 +247,10 @@ function applyLanguage(lang) {
     csCard.setAttribute("lang", "cs");
   }
 
-  // Update active state on language switcher buttons
-  document.querySelectorAll(".lang-btn").forEach(btn => {
-    const btnLang = btn.getAttribute("data-lang");
-    btn.classList.toggle("active", btnLang === lang);
+  // Translate <option> elements with data-i18n-opt
+  document.querySelectorAll("[data-i18n-opt]").forEach(el => {
+    const key = el.getAttribute("data-i18n-opt");
+    el.textContent = t(key, lang);
   });
 
   // Re-render API key status line in new language (it uses t() for translated strings)

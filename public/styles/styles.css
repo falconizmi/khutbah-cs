@@ -475,6 +475,11 @@ body {
    Hide everything except the active sermon tab content.
    ========================================================================== */
 @media print {
+  @page {
+    margin: 18mm 15mm;
+    @bottom-center { content: counter(page) " / " counter(pages); }
+  }
+
   body { background: #fff !important; }
 
   .app-header,
@@ -502,7 +507,7 @@ body {
   #sermon-output-card {
     font-size: 13pt;
     line-height: 1.65;
-    padding: 24mm 20mm;
+    padding: 0;
     margin: 0;
     white-space: pre-wrap;
     word-break: break-word;

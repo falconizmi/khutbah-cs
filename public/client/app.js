@@ -24,6 +24,7 @@ const State = {
   results: {},             // { full: text, condensed: text, brief: text }
   activeTab: "full",       // Currently visible output tab
   cancelled: false,        // Set to true when user clicks Cancel during translation
+  modelUsed: "",           // Actual model that completed the translation (may differ from preferred)
 };
 
 /* ------------------------------------------------------------------ */
@@ -453,6 +454,9 @@ async function runFullTranslation() {
       onChunk: (txt) => { if (outputEl) outputEl.textContent += txt; },
     });
 
+    // Track which model actually completed the translation
+    State.modelUsed = transResult.modelUsed || State.model;
+
     let draftCs = transResult.text;
 
     // --- Step 2: Polish (Pass 2) ---
@@ -511,6 +515,7 @@ async function runFullTranslation() {
 
     buildOutputTabs();
     switchTab("full");
+    updateModelIndicator();
 
   } catch (err) {
     console.error("Translation failed:", err);
@@ -713,7 +718,13 @@ function showScriptureSummary(meta) {
   if (meta.fewShotDates && meta.fewShotDates.length) {
     const aBadge = document.createElement("span");
     aBadge.className = "badge badge-archive";
-    aBadge.textContent = `Few-shot: ${meta.fewShotDates.join(", ")}`;
+    // Format dates nicely: show count + first/last date range
+    const dates = meta.fewShotDates;
+    if (dates.length === 1) {
+      aBadge.textContent = `${t("few_shot_single")}: ${dates[0]}`;
+    } else {
+      aBadge.textContent = `${dates.length} ${t("few_shot_sermons")} (${dates[0]} – ${dates[dates.length - 1]})`;
+    }
     summaryRow.appendChild(aBadge);
   }
 
@@ -755,6 +766,15 @@ function updateDatasetIndicator(status) {
   const el = document.getElementById("dataset-indicator");
   if (!el) return;
   el.textContent = `${t("dataset_ready")} (${status.verses.toLocaleString()} ${t("verses_count")}, ${status.hadiths} ${t("hadiths_count")}, ${status.sermons} ${t("sermons_count")})`;
+  el.classList.add("visible");
+}
+
+/** Show which model was actually used (may differ from preferred if fallback occurred). */
+function updateModelIndicator() {
+  const el = document.getElementById("dataset-indicator");
+  if (!el) return;
+  const existingText = el.textContent || "";
+  el.textContent = `${existingText} · ${t("model_used")}: ${State.modelUsed}`;
   el.classList.add("visible");
 }
 
