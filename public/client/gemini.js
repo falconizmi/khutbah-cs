@@ -27,6 +27,7 @@ async function geminiStream(systemPrompt, userText, apiKey, opts = {}) {
     thinkingLevel = "medium",
     onChunk = null,       // callback(chunk: string) for live streaming
     onProgress = null,    // callback(stepIndex: number) for progress bar
+    onFallback = null,    // callback(modelName: string) when falling back to next model
     chunkTimeout = 150,   // seconds before giving up on a model
     abortSignal = null,   // AbortController.signal from caller (cancel button)
   } = opts;
@@ -45,6 +46,11 @@ async function geminiStream(systemPrompt, userText, apiKey, opts = {}) {
   for (let mi = 0; mi < modelsToTry.length; mi++) {
     const model = modelsToTry[mi];
     const retries = 2;
+
+    // Notify caller when we're falling back to a different model
+    if (mi > 0 && typeof onFallback === "function") {
+      onFallback(model);
+    }
 
     for (let attempt = 1; attempt <= retries; attempt++) {
       try {

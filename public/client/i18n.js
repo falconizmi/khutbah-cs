@@ -22,8 +22,8 @@ const I18N = {
     friday_date_label: "Datum pátečního kázání",
     date_preview: "Předpokládaný hlavičkový datum:",
     output_versions_label: "Verze výstupu",
-    opt_all_three: "Všechny 3 verze — Porovnat plné, zkrácené a stručné",
-    opt_full_condensed: "Plné + Zkrácené (~4–5 min / 1 A4 stránka)",
+    opt_all_three: "Všechny 3 verze",
+    opt_full_condensed: "Plné + Zkrácené (~4–5 min)",
     opt_full_brief: "Plné + Stručné (~2–3 min)",
     opt_full_only: "Pouze plné kázání (~8–10 min)",
     ai_model_label: "Model AI",
@@ -65,8 +65,10 @@ const I18N = {
     err_file_read_failed: "Nelze přečíst soubor.",
     // Model and few-shot labels
     model_used: "Model použit pro překlad",
+    model_fallback: "Přepínám na dostupný model",
     few_shot_single: "Referenční kázání z archivu",
     few_shot_sermons: "referenčních kázání z archivu",
+    model_info_note: "💡 Poznámka: Lepší modely jsou někdy vytížené (kvóty zdarma). Pokud překlad trvá déle než obvykle, aplikace se automaticky přepne na slabší dostupný model. Výsledek bude stále kvalitní.",
   },
   ar: {
     page_title: "مترجم خطب الجمعة",
@@ -86,8 +88,8 @@ const I18N = {
     friday_date_label: "تاريخ خطبة الجمعة",
     date_preview: "التاريخ المتوقع:",
     output_versions_label: "إصدارات المخرجات",
-    opt_all_three: "جميع الإصدارات الثلاثة — مقارنة كاملة ومختصرة وموجزة",
-    opt_full_condensed: "كاملة + مختصرة (~4–5 دقائق / صفحة A4 واحدة)",
+    opt_all_three: "جميع الإصدارات الثلاثة",
+    opt_full_condensed: "كاملة + مختصرة (~4–5 دقائق)",
     opt_full_brief: "كاملة + موجزة (~2–3 دقائق)",
     opt_full_only: "الخطبة الكاملة فقط (~8–10 دقائق)",
     ai_model_label: "نموذج الذكاء الاصطناعي",
@@ -129,8 +131,10 @@ const I18N = {
     err_file_read_failed: "تعذر قراءة الملف.",
     // Model and few-shot labels
     model_used: "النموذج المستخدم للترجمة",
+    model_fallback: "التبديل إلى نموذج متاح",
     few_shot_single: "خطبة مرجعية من الأرشيف",
     few_shot_sermons: "خطب مرجعية من الأرشيف",
+    model_info_note: "💡 ملاحظة: قد تكون النماذج الأفضل مشغولة أحياناً (حصص مجانية). إذا استغرق الترجمة وقتاً أطول، ستنتقل التطبيق تلقائياً إلى نموذج متاح آخر. النتيجة ستكون جيدة.",
   },
   en: {
     page_title: "Friday Khutbah Translator",
@@ -150,8 +154,8 @@ const I18N = {
     friday_date_label: "Friday Sermon Date",
     date_preview: "Expected header date:",
     output_versions_label: "Output Versions",
-    opt_all_three: "All 3 Versions — Compare Full, Condensed & Brief",
-    opt_full_condensed: "Full + Condensed (~4–5 min / 1 A4 page)",
+    opt_all_three: "All 3 Versions",
+    opt_full_condensed: "Full + Condensed (~4–5 min)",
     opt_full_brief: "Full + Brief (~2–3 min)",
     opt_full_only: "Full Sermon Only (~8–10 min)",
     ai_model_label: "AI Model",
@@ -193,8 +197,10 @@ const I18N = {
     err_file_read_failed: "Could not read file.",
     // Model and few-shot labels
     model_used: "Model used for translation",
+    model_fallback: "Switching to available model",
     few_shot_single: "Reference sermon from archive",
     few_shot_sermons: "reference sermons from archive",
+    model_info_note: "💡 Note: Better models are sometimes busy (free tier quotas). If translation takes longer than usual, the app automatically switches to a weaker available model. The result will still be good quality.",
   },
 };
 
@@ -251,6 +257,12 @@ function applyLanguage(lang) {
   document.querySelectorAll("[data-i18n-opt]").forEach(el => {
     const key = el.getAttribute("data-i18n-opt");
     el.textContent = t(key, lang);
+  });
+
+  // Update active state on language switcher buttons
+  document.querySelectorAll(".lang-btn").forEach(btn => {
+    const btnLang = btn.getAttribute("data-lang");
+    btn.classList.toggle("active", btnLang === lang);
   });
 
   // Re-render API key status line in new language (it uses t() for translated strings)

@@ -227,10 +227,13 @@ function initControls() {
 
 
   // Remember checkbox: unchecking immediately clears localStorage
+  // Remember checkbox: check saves, uncheck clears
   const rememberCb = document.getElementById("remember-key");
   if (rememberCb) {
     rememberCb.addEventListener("change", () => {
-      if (!rememberCb.checked) {
+      if (rememberCb.checked && State.apiKey.length >= 10) {
+        localStorage.setItem("khutbah_api_key", State.apiKey);
+      } else if (!rememberCb.checked) {
         localStorage.removeItem("khutbah_api_key");
       }
     });
@@ -403,9 +406,16 @@ function buildScripturePanel(panel, qMatches, hMatches) {
 
       details.appendChild(item);
     }
-
     panel.appendChild(details);
   }
+}
+
+/** Show a visible notification when model fallback occurs. */
+function showFallbackNotification(modelName) {
+  const el = document.getElementById("fallback-indicator");
+  if (!el) return;
+  el.textContent = `${t("model_fallback")}: ${modelName}`;
+  el.classList.add("visible");
 }
 
 /** Full translation pipeline: Pass 1 (translate) → Pass 2 (polish) → condense/brief. */
@@ -452,6 +462,7 @@ async function runFullTranslation() {
       temperature: 0.2,
       thinkingLevel: "high",
       onChunk: (txt) => { if (outputEl) outputEl.textContent += txt; },
+      onFallback: showFallbackNotification,
     });
 
     // Track which model actually completed the translation
@@ -470,6 +481,7 @@ async function runFullTranslation() {
       temperature: 0.1,
       thinkingLevel: "low",
       onChunk: null, // Don't stream polish — replace at end
+      onFallback: showFallbackNotification,
     });
 
     let [finalCs, warnings] = postprocessAndVerify(polishResult.text, State.matcher);
@@ -487,7 +499,7 @@ async function runFullTranslation() {
         condensePrompt + "\n\n[LENGTH TIER: CONDENSED]\n",
         `[FULL VERIFIED CZECH SERMON TO CONDENSE]\n${finalCs}`,
         State.apiKey,
-        { preferredModel: State.model, temperature: 0.2, thinkingLevel: "low" }
+        { preferredModel: State.model, temperature: 0.2, thinkingLevel: "low", onFallback: showFallbackNotification }
       );
 
       let [condensedCs, condWarnings] = postprocessAndVerify(condenseResult.text, State.matcher);
@@ -502,7 +514,7 @@ async function runFullTranslation() {
         condensePrompt + "\n\n[LENGTH TIER: BRIEF]\n",
         `[FULL VERIFIED CZECH SERMON TO CONDENSE]\n${finalCs}`,
         State.apiKey,
-        { preferredModel: State.model, temperature: 0.2, thinkingLevel: "low" }
+        { preferredModel: State.model, temperature: 0.2, thinkingLevel: "low", onFallback: showFallbackNotification }
       );
 
       let [briefCs, briefWarnings] = postprocessAndVerify(briefResult.text, State.matcher);

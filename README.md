@@ -4,7 +4,7 @@ Automated Arabic-to-Czech Friday sermon (Khutbah) translation and rhetorical pol
 
 Designed for pre-written Arabic sermons read aloud as a Czech insert during the Friday prayer pause — enforcing canonical scriptural translations, natural Czech spoken cadence, and ritual silence rules (stripping congregation-baiting greetings).
 
-**100% static web app** — zero backend required. Deploy to GitHub Pages in one click or run locally with `python3 -m http.server`.
+**100% static web app** — zero backend required. Built with Astro, deployed to GitHub Pages automatically via Actions workflow.
 
 ---
 
@@ -18,17 +18,19 @@ Designed for pre-written Arabic sermons read aloud as a Czech insert during the 
 
 - `prompts/` — Empirically synthesized Czech Khutbah translation System Prompts (`translation_prompt.md` production pipeline prompt, `condense_prompt.md` for shortened spoken-pulpit inserts across all 3 length tiers).
 
-- `src/` — Raw WordPress fetcher (`fetch_prague_raw.py`), dataset builder & QA verifier (`build_datasets.py`), Free-Tier streaming Gemini client with BYOK support (`gemini_client.py`), fuzzy scripture/few-shot matcher (`match_context.py`), translator/post-processor (`translate.py`).
+- `src/` — Astro layouts, pages, and components. Raw WordPress fetcher (`fetch_prague_raw.py`), dataset builder & QA verifier (`build_datasets.py`), Free-Tier streaming Gemini client with BYOK support (`gemini_client.py`), fuzzy scripture/few-shot matcher (`match_context.py`), translator/post-processor (`translate.py`).
 
-- `web/` — **Static web application** (zero backend):
-  - `index.html` — Complete UI shell with trilingual controls (CS / AR / EN)
-  - `styles.css` — Mosque aesthetic palette, print stylesheet for A4 pulpit sheets
-  - `i18n.js` — Trilingual dictionary (Czech, Arabic, English) with RTL support
-  - `matcher.js` — Client-side port of `match_context.py` + `postprocess_and_verify()` (Quran/Hadith matching, Hijri dates, Hrbek adapter, Levenshtein ratio)
-  - `gemini.js` — Browser SSE streaming to Gemini API with automatic model fallback
-  - `app.js` — UI state management, generation pipeline, tabs, localStorage BYOK key handling, print trigger
+- `public/` — **Static web application assets** (served as-is by Astro):
+  - `client/i18n.js` — Trilingual dictionary (Czech, Arabic, English) with RTL support
+  - `client/matcher.js` — Client-side port of `match_context.py` + `postprocess_and_verify()` (Quran/Hadith matching, Hijri dates, Hrbek adapter, Levenshtein ratio)
+  - `client/gemini.js` — Browser SSE streaming to Gemini API with automatic model fallback and real-time fallback notifications
+  - `client/app.js` — UI state management, generation pipeline, tabs, localStorage BYOK key handling, print trigger
+  - `client/bootstrap.js` — Script loader that injects classic dependencies before the main app module
+  - `styles/styles.css` — Mosque aesthetic palette, print stylesheet for A4 pulpit sheets
+  - `assets/data/` — Quran, Hadith, and Prague archive JSON datasets (copied from `data/processed/`)
+  - `assets/prompts/` — Translation and condense prompts (copied from `prompts/`)
 
-- `.github/workflows/deploy-pages.yml` — GitHub Actions workflow for one-click Pages deployment (assembles `_site/` from `web/*`, `data/processed/*.json`, and `prompts/*.md`).
+- `.github/workflows/deploy-pages.yml` — GitHub Actions workflow: runs `npm ci`, `astro build`, deploys the `dist/` output to Pages.
 
 ---
 
@@ -77,31 +79,53 @@ All tiers run through the same `postprocess_and_verify()` QA pipeline (Hrbek ver
 
 ---
 
-## 🌐 Static Web App — Local Preview
-
-No build step required. Serve the repo root and open in your browser:
+## 🌐 Static Web App — Local Development
 
 ```bash
 cd /path/to/khutbah-cs
-python3 -m http.server 8000
-# → Open http://localhost:8000/web/index.html
-```
 
-The web app automatically loads datasets from `../data/processed/*.json` and prompts from `../prompts/*.md` when served this way.
+# Install Node.js dependencies (one-time)
+npm install
+
+# Dev server with hot-reload
+npm run dev -- --host 0.0.0.0   # → http://localhost:4321
+
+# Production build + preview
+npm run build                  # builds to dist/
+npm run preview -- --host 0.0.0.0   # serves dist/ at http://localhost:4321
+```
 
 ---
 
-## 🚀 Deploy to GitHub Pages (1 Click)
+## 🚀 Deploy to GitHub Pages (Automatic)
 
-1. Push your repo to GitHub.
-2. In the repository: **Settings → Pages → Source** → select **GitHub Actions**.
-3. The `.github/workflows/deploy-pages.yml` workflow will assemble `_site/` on every push to `main`:
-   - Copies `web/*` (HTML, CSS, JS)
-   - Copies `data/processed/*.json` → `_site/assets/data/`
-   - Copies `prompts/*.md` → `_site/assets/prompts/`
-   - Creates `.nojekyll` and deploys via official `actions/deploy-pages@v4`
+Push to `main` — the Actions workflow runs `astro build` and deploys automatically.
+
+Setup once: **Settings → Pages → Source** → select **GitHub Actions**.
 
 Your site will be live at `https://<your-username>.github.io/<repo-name>/`.
+
+---
+
+## 🔒 Security & Privacy
+
+- **Zero backend**: no server-side code, no cookies, no tracking
+- **BYOK API key**: stored in `localStorage` only when you check "Save key on this device" — never leaves your browser
+- **CSP enforced**: `script-src 'self'`, `connect-src` limited to Gemini API only
+- **No inline scripts**: all JS loaded via module entry point (`bootstrap.js`)
+- **DOM-safe rendering**: no `innerHTML` with dynamic data; all content via `textContent`
+
+---
+
+## 🤖 Model Fallback System
+
+The app tries your preferred model first. If it's busy or quota-exhausted (common on free tier), it automatically falls back through weaker models:
+
+```
+gemini-4-hydrogen → gemini-3.8-flash → gemini-3.6-flash → gemini-3.5-flash-lite → gemini-3.1-flash-lite
+```
+
+A visible notification appears when a fallback occurs, and the final model used is shown after translation completes. Translation quality remains good even on weaker models for this task.
 
 ---
 
