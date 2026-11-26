@@ -14,13 +14,14 @@ function loadScript(src) {
 }
 
 async function bootstrap() {
+  var base = new URL(".", import.meta.url).href;
   // Load dependency scripts that inject globals into window scope
-  await loadScript("/client/i18n.js");
-  await loadScript("/client/matcher.js");
-  await loadScript("/client/gemini.js");
+  await loadScript(base + "i18n.js");
+  await loadScript(base + "matcher.js");
+  await loadScript(base + "gemini.js");
 
   // Now load the main app module and initialize
-  var m = await import("/client/app.js");
+  var m = await import(base + "app.js");
   if (document.readyState !== "loading") {
     m.init();
   } else {
