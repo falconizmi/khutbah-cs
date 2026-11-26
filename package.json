@@ -1,0 +1,25 @@
+{
+  "name": "khutbah-cs",
+  "version": "2.0.0",
+  "description": "Automated Arabic-to-Czech Friday sermon (Khutbah) translation and rhetorical polishing pipeline, built for the Teplice mosque and wider Czech Muslim community.",
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/falconizmi/khutbah-cs.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/falconizmi/khutbah-cs/issues"
+  },
+  "homepage": "https://github.com/falconizmi/khutbah-cs#readme",
+  "dependencies": {
+    "astro": "^7.4.1"
+  }
+}
